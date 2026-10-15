@@ -149,17 +149,49 @@ scan_capacidades() {
     done
   done
 
+  # Servidores MCP cadastrados no Cursor. SOMENTE OS NOMES das chaves de
+  # `mcpServers`: url, command, args, env e headers podem conter token e
+  # nunca saem daqui. Serve de pista para a FASE 0.5 (ex.: "ai-memory",
+  # "claude-mem"); a prova de que o servidor responde continua sendo a
+  # chamada MCP (list_corpora / memory_status).
   echo
-  echo "[PLUGINS_HABILITADOS]"
-  if [ -f "$CURSOR_HOME/settings.json" ] && command -v python3 >/dev/null 2>&1; then
-    python3 - "$CURSOR_HOME/settings.json" <<'PY' 2>/dev/null || echo "indisponivel"
+  echo "[MCP_CURSOR]"
+  if [ -f "$CURSOR_HOME/mcp.json" ] && command -v python3 >/dev/null 2>&1; then
+    python3 - "$CURSOR_HOME/mcp.json" <<'PY' 2>/dev/null || echo "indisponivel"
 import json,sys
 try:
     d=json.load(open(sys.argv[1]))
 except Exception:
     sys.exit(1)
-for k,v in (d.get("enabledPlugins") or {}).items():
-    if v: print(k)
+nomes=sorted((d.get("mcpServers") or {}).keys())
+if not nomes:
+    print("nenhum")
+for k in nomes:
+    print(k)
+PY
+  else
+    echo "indisponivel"
+  fi
+
+  # Plugins do Claude Code. E deles que vem o claude-mem e boa parte das
+  # skills em plugins/cache; o Cursor nao tem registro proprio equivalente.
+  echo
+  echo "[PLUGINS_CLAUDE]"
+  if [ -f "$HOME/.claude/plugins/installed_plugins.json" ] && command -v python3 >/dev/null 2>&1; then
+    python3 - "$HOME/.claude/plugins/installed_plugins.json" <<'PY' 2>/dev/null || echo "indisponivel"
+import json,sys
+try:
+    d=json.load(open(sys.argv[1]))
+except Exception:
+    sys.exit(1)
+p=d.get("plugins")
+if not isinstance(p,dict):
+    p=d
+nomes=sorted(k for k in p.keys() if isinstance(k,str))
+if not nomes:
+    print("nenhum")
+for k in nomes:
+    print(k)
 PY
   else
     echo "indisponivel"
@@ -167,23 +199,37 @@ PY
 
   echo
   echo "[MARKETPLACES]"
-  if [ -f "$CURSOR_HOME/plugins/known_marketplaces.json" ] && command -v python3 >/dev/null 2>&1; then
-    python3 - "$CURSOR_HOME/plugins/known_marketplaces.json" <<'PY' 2>/dev/null || echo "indisponivel"
+  local mk achou=0
+  for mk in "$CURSOR_HOME/plugins/known_marketplaces.json" "$HOME/.claude/plugins/known_marketplaces.json"; do
+    [ -f "$mk" ] && command -v python3 >/dev/null 2>&1 || continue
+    if python3 - "$mk" <<'PY' 2>/dev/null; then achou=1; fi
 import json,sys
 try:
     d=json.load(open(sys.argv[1]))
 except Exception:
     sys.exit(1)
-for k,v in d.items():
-    print(f"{k} = {v.get('source',{}).get('repo','?')}")
+for k,v in sorted(d.items()):
+    src=v.get('source',{}) if isinstance(v,dict) else {}
+    print(f"{k} = {src.get('repo','?')}")
 PY
-  else
-    echo "indisponivel"
-  fi
+  done
+  [ "$achou" -eq 1 ] || echo "indisponivel"
+
+  # Binarios no PATH. Apenas presenca — nenhuma versao, nenhum caminho.
+  echo
+  echo "[BINARIOS]"
+  local b
+  for b in ai-memory uv pnpm bun node python3 go cargo php composer dotnet flutter docker rtk shellcheck; do
+    if command -v "$b" >/dev/null 2>&1; then
+      echo "$b: presente"
+    else
+      echo "$b: ausente"
+    fi
+  done
 
   echo
   echo "[NOTA]"
-  echo "MCP de memoria nao e verificavel por script — testar chamando list_corpora."
+  echo "MCP de memoria nao e verificavel por script — testar chamando list_corpora (claude-mem) e memory_status (ai-memory)."
 }
 
 # ----------------------------------------------------------------- projeto
@@ -205,8 +251,9 @@ scan_projeto() {
   # shellcheck disable=SC2086
   local manifestos
   manifestos=$(find . -maxdepth 3 \( $PRUNE \) -prune -o -type f \( \
-      -name package.json -o -name requirements.txt -o -name pyproject.toml \
+      -name package.json -o -name requirements.txt -o -name pyproject.toml -o -name Pipfile \
       -o -name go.mod -o -name Cargo.toml -o -name composer.json -o -name Gemfile \
+      -o -name pubspec.yaml \
       -o -name '*.csproj' -o -name pom.xml -o -name build.gradle -o -name build.gradle.kts \
     \) -print 2>/dev/null | sed 's|^\./||' | sort)
   [ -n "$manifestos" ] && printf '%s\n' "$manifestos"
@@ -217,9 +264,27 @@ scan_projeto() {
   local locks
   locks=$(find . -maxdepth 3 \( $PRUNE \) -prune -o -type f \( \
       -name package-lock.json -o -name yarn.lock -o -name pnpm-lock.yaml \
-      -o -name bun.lockb -o -name poetry.lock -o -name Cargo.lock -o -name composer.lock \
+      -o -name bun.lockb -o -name bun.lock -o -name poetry.lock -o -name uv.lock -o -name Pipfile.lock \
+      -o -name Cargo.lock -o -name composer.lock -o -name go.sum -o -name Gemfile.lock \
     \) -print 2>/dev/null | sed 's|^\./||' | sort)
   [ -n "$locks" ] && printf '%s\n' "$locks"
+
+  # Sinais de qualidade e toolchain. Apenas presenca/ausencia na raiz —
+  # alimentam a linha informativa de "desvios de preferencia" da FASE 2.
+  # Nenhum conteudo e lido, exceto o grep por [tool.ruff] no pyproject.
+  echo
+  echo "[QUALIDADE]"
+  for f in .editorconfig biome.json biome.jsonc ruff.toml .ruff.toml lefthook.yml \
+           .pre-commit-config.yaml compose.yaml compose.yml LICENSE CHANGELOG.md \
+           tailwind.config.js tailwind.config.ts .golangci.yml .golangci.yaml; do
+    echo "$f: $(existe "$f")"
+  done
+  echo ".github/workflows/: $(existe .github/workflows)"
+  if [ -f pyproject.toml ] && grep -q '^\[tool\.ruff' pyproject.toml 2>/dev/null; then
+    echo "pyproject.toml [tool.ruff]: presente"
+  else
+    echo "pyproject.toml [tool.ruff]: ausente"
+  fi
 
   echo
   echo "[DOCKER]"

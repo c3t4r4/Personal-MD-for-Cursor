@@ -38,7 +38,7 @@ Instruções globais e documentação local verificadas. Iniciando a análise do
 
 `/init-project` **cria e audita** a estrutura de governança. Ele não é o que mantém a documentação em dia.
 
-A manutenção contínua é regida pela seção `Sincronização obrigatória de documentação` de `~/.cursor/rules/personal-md-global.mdc`: ao fim de **toda** implementação, os onze documentos são avaliados pela tabela de gatilhos e cada um recebe um estado explícito — `atualizado`, `criado`, `sem alteração` ou `n/a`. Documento condicional ausente cujo gatilho disparou é criado na hora, a partir do template correspondente, sem esperar por este comando.
+A manutenção contínua é regida pela seção `Sincronização obrigatória de documentação` de `~/.cursor/rules/personal-md-global.mdc`: ao fim de **toda** implementação, os doze documentos são avaliados pela tabela de gatilhos e cada um recebe um estado explícito — `atualizado`, `criado`, `sem alteração` ou `n/a`. Documento condicional ausente cujo gatilho disparou é criado na hora, a partir do template correspondente, sem esperar por este comando.
 
 Se a auditoria deste comando encontrar documentação defasada, isso é sintoma de sincronização não executada — reportar como tal, e não apenas corrigir.
 
@@ -123,15 +123,15 @@ bash ~/.cursor/templates/init-project/_scan.sh capacidades
 
 Este modo **não é cacheado**, de propósito: a invalidação natural seria o mtime de `agents/` e `skills/`, que não muda quando um frontmatter é editado no lugar — justamente o caso que a varredura precisa detectar. É também o modo barato, então não há o que economizar.
 
-E tentar `list_corpora` — a única capacidade que o script não consegue verificar, por ser MCP.
+E tentar `list_corpora` (`claude-mem`) **e** `memory_status` (`ai-memory`) — a única capacidade que o script não consegue verificar diretamente, por ser MCP. A seção `[MCP_CURSOR]` do script lista os nomes dos servidores cadastrados no Cursor e serve de pista, mas a prova é a chamada responder. Basta um dos dois backends para a capacidade contar como disponível.
 
-Esta chamada e a tentativa de `list_corpora` não dependem de nada da FASE 1 (nem o contrário) — emitir junto com as leituras da FASE 1 na mesma mensagem, em vez de esperar uma fase terminar para começar a outra.
+Esta chamada e as tentativas de `list_corpora`/`memory_status` não dependem de nada da FASE 1 (nem o contrário) — emitir junto com as leituras da FASE 1 na mesma mensagem, em vez de esperar uma fase terminar para começar a outra.
 
 Montar a tabela e apresentá-la:
 
 | Capacidade | Uso | Se faltar |
 | --- | --- | --- |
-| MCP de memória | corpora, `smart_search`, `observation_search`, `query_corpus` | Glob/Grep com escopo; `docs/RAG.md` registra "sem backend de RAG" |
+| MCP de memória (`claude-mem` ou `ai-memory`) | `claude-mem`: corpora, `smart_search`, `observation_search`, `query_corpus`; `ai-memory`: `memory_query`, `memory_briefing`, handoffs | Glob/Grep com escopo; `docs/RAG.md` registra "sem backend de RAG" |
 | skill `archify` (indispensável) | gerar/atualizar `docs/arquitetura.html` a partir de `docs/Arquitetura.md` | pular a geração, registrar pendência em `docs/RAG.md` e no resumo final |
 | agentes do harness | delegação nos pontos caros | papéis executados inline |
 | skill `ui-ux-pro-max` | apoio ao `docs/Frontend.md` | design system vem da entrevista |
@@ -211,6 +211,8 @@ Se a saída trouxer `sugerir_delegacao: sim` (mais de ~500 arquivos de código o
 ### Saída
 
 Resumo estruturado com stack, gerenciador, banco, ORM, autenticação, API, Docker, testes, telas detectadas, migrações, Git e backend de RAG.
+
+Incluir uma linha **informativa** com os desvios em relação à seção `## Preferências de stack por ecossistema` da regra global, usando as seções `[LOCKS]` e `[QUALIDADE]` do script (ex.: `requirements.txt` sem `uv.lock`, ESLint + Prettier em vez de Biome). Desvio em projeto existente **não** é erro nem vira pergunta: a convenção do projeto prevalece. Só vira pergunta na FASE 4 quando houver lacuna real — a função ainda não tem ferramenta nenhuma.
 
 **Não modificar nada nesta fase.**
 
@@ -390,6 +392,7 @@ Estado **previsto** de cada documento ao fim desta tarefa. Seção obrigatória 
 | `docs/Progresso.md` | atualizado | sempre |
 | `docs/Memoria.md` | [ESTADO] | [MOTIVO] |
 | `docs/Harness.md` | [ESTADO] | [MOTIVO] |
+| `README.md` | [ESTADO] | [MOTIVO] |
 
 ## Validação
 
@@ -427,6 +430,7 @@ Cada template é um arquivo próprio em `~/.cursor/templates/init-project/`, no 
 | `docs/Frontend.md` | `Frontend.md.tpl.md` | Há frontend |
 | `docs/Auth.md` | `Auth.md.tpl.md` | Há autenticação |
 | `docs/Infraestrutura.md` | `Infraestrutura.md.tpl.md` | Há Docker, deploy ou infraestrutura gerenciada |
+| `README.md` | — (sem template dedicado; estrutura mínima descrita em `Como ler a tabela` da regra global) | Sempre que ausente. README existente é preservado — na FASE 3 ele é classificado como os demais |
 
 ### Preenchimento
 
@@ -454,17 +458,17 @@ Não inventar regra. O esqueleto existe para ser preenchido conforme o trabalho 
 
 ## FASE 7 — Indexação e RAG
 
-1. **Reaproveitar a detecção da FASE 0.5** — backend disponível e presença de `docs/arquitetura.html` / skill `archify` já foram levantados. Não detectar de novo. Se o MCP de memória estiver ausente, registrar o fallback em `docs/RAG.md` e pular direto ao passo 5.
+1. **Reaproveitar a detecção da FASE 0.5** — backend disponível e presença de `docs/arquitetura.html` / skill `archify` já foram levantados. Não detectar de novo. Se nenhum backend de memória estiver presente, registrar o fallback em `docs/RAG.md` e pular direto ao passo 4. Se só `ai-memory` estiver presente, não há corpus a construir: registrar em `docs/RAG.md` o workspace/projeto que o servidor resolveu (via `memory_status` ou `memory_briefing`) e pular o passo 5.
 2. **Definir exclusões** antes de qualquer indexação: `.env`, secrets, chaves, certificados, tokens, dumps e fixtures com dados pessoais, logs de produção.
 3. **Perguntar antes de qualquer operação cara.** Nunca executar automaticamente:
    - `/learn-codebase` lê todo arquivo-fonte na íntegra — só com confirmação explícita.
 4. **Garantir `docs/arquitetura.html` via `archify`** quando `docs/Arquitetura.md` existir e a skill estiver disponível — regenerar se estiver ausente ou defasado. Sem `archify`, registrar pendência em `docs/RAG.md`.
-5. **Construir os corpora**, se autorizado:
+5. **Construir os corpora** (`claude-mem`), se autorizado:
    - `<projeto>-geral` — visão geral do projeto;
    - `<projeto>-regras` — `types=decision,feature`, apoio ao `RegrasNegocio.md`.
 6. **Escrever `docs/RAG.md`** refletindo o estado **real**: o que existe, o que não existe, o que foi recusado, e o estado do `docs/arquitetura.html`. Se nada foi indexado, registrar isso e o fallback (Glob/Grep com escopo).
 
-`smart_search` não exige indexação — funciona direto sobre o disco e é sempre a primeira opção para localizar código.
+`smart_search` (`claude-mem`) não exige indexação — funciona direto sobre o disco e é sempre a primeira opção para localizar código. Sem `claude-mem`, localizar código é `Glob`/`Grep` com escopo.
 
 ---
 
@@ -494,6 +498,7 @@ Se o projeto precisar de regras locais, propor arquivos em `.cursor/rules/*.mdc`
 ### Checklist final
 
 - [ ] Documentos obrigatórios existem
+- [ ] `README.md` existe e reflete o projeto (12.º documento da sincronização; nunca `n/a`)
 - [ ] `docs/arquitetura.html` existe e reflete a versão atual de `docs/Arquitetura.md`, quando a skill `archify` estiver disponível
 - [ ] Documentos condicionais aplicáveis existem
 - [ ] `docs/Harness.md` tem a coluna **Neste projeto** preenchida com agente real ou `inline`

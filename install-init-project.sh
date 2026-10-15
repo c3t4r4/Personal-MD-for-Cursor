@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 #
-# install-init-project.sh
+# install-init-project.sh — macOS e Linux
 #
 # Instala (ou atualiza) o comando /init-project do Cursor a partir de uma pasta
 # gerada por package-init-project.sh (ou do dist/ deste repositório).
+# O Cursor usa ~/.cursor/ nos dois sistemas; no Windows, usar
+# install-init-project.ps1.
+# Destino: $CURSOR_CONFIG_DIR, se definido; senão ~/.cursor (mesma regra do
+# .ps1 e do hook session-scan.sh). Útil em WSL e em testes.
 # Nunca sobrescreve um arquivo existente sem perguntar, arquivo por arquivo,
 # com opção de ver o diff antes de decidir.
 #
@@ -18,7 +22,7 @@ set -uo pipefail
 # Sem "set -e" de propósito: o laço de perguntas interativas usa "read" e
 # "diff", que retornam status != 0 em casos normais.
 
-CURSOR_HOME="${HOME}/.cursor"
+CURSOR_HOME="${CURSOR_CONFIG_DIR:-${HOME}/.cursor}"
 DIST_DIR="${CURSOR_HOME}/initProjectsInstall/dist"
 DEFAULT_PACKAGE_DIR="${DIST_DIR}/init-project"
 
@@ -248,6 +252,14 @@ else
         esac
       fi
     fi
+  else
+    # Sem TTY (ou SO desconhecido): só informa o comando manual, como o .ps1.
+    case "${OS_KIND}" in
+      macos)   echo "  ℹ Para instalar: brew install rtk" ;;
+      linux)   echo "  ℹ Para instalar: curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh" ;;
+      windows) echo "  ℹ Para instalar: winget install rtk-ai.rtk" ;;
+      *)       echo "  ℹ Para instalar: veja https://github.com/rtk-ai/rtk" ;;
+    esac
   fi
 fi
 
@@ -300,6 +312,7 @@ fi
 
 echo ""
 echo "-- MCP de memória --"
-echo "MCP de memória não é verificável por script — testar chamando list_corpora numa sessão do Cursor."
+echo "MCP de memória não é verificável por script — numa sessão do Cursor, testar list_corpora (claude-mem) ou memory_status (ai-memory). Basta um dos dois."
+echo "Instalação de cada backend: ${CURSOR_HOME}/templates/init-project/_capacidades.md"
 echo ""
 echo "==> Instalação concluída. No Agent do Cursor, use /init-project na raiz de um projeto."

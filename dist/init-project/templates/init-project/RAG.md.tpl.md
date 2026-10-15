@@ -12,7 +12,7 @@ Estado detectado em [DATA]. Ambiente muda; reconferir com `_scan.sh capacidades`
 
 | Capacidade | Situação | Uso neste projeto | Fallback em uso |
 | --- | --- | --- | --- |
-| MCP de memória | [DISPONÍVEL / INDISPONÍVEL] | Base — observações, corpora e busca AST | Glob/Grep com escopo restrito |
+| MCP de memória | [claude-mem / ai-memory / ambos / nenhum] | Base — histórico, decisões e (com `claude-mem`) corpora e busca AST | Glob/Grep com escopo restrito |
 | skill `archify` | [DISPONÍVEL / INDISPONÍVEL] | Indispensável — `docs/arquitetura.html` a partir de `docs/Arquitetura.md` | HTML pendente; registrar em `docs/RAG.md` |
 | agentes do harness | [DISPONÍVEIS / PARCIAIS / AUSENTES] | Papéis de `docs/Harness.md` com contexto isolado | papéis executados inline |
 | skill `ui-ux-pro-max` | [DISPONÍVEL / INDISPONÍVEL / NÃO APLICÁVEL] | Apoio ao `docs/Frontend.md` | design system vindo da entrevista |
@@ -27,8 +27,9 @@ Se nenhum backend de recuperação estiver disponível, registrar aqui e usar Gl
 
 | Índice | Tipo | Conteúdo | Como atualizar |
 | --- | --- | --- | --- |
-| `[PROJETO]-geral` | corpus do MCP de memória | Decisões, correções e descobertas do projeto | `build_corpus` |
-| `[PROJETO]-regras` | corpus do MCP de memória | Filtrado por `types=decision,feature` — apoio ao `RegrasNegocio.md` | `build_corpus` |
+| `[PROJETO]-geral` | corpus do `claude-mem` | Decisões, correções e descobertas do projeto | `build_corpus` |
+| `[PROJETO]-regras` | corpus do `claude-mem` | Filtrado por `types=decision,feature` — apoio ao `RegrasNegocio.md` | `build_corpus` |
+| wiki `ai-memory` (`[WORKSPACE]/[PROJETO]`) | wiki markdown do `ai-memory` (opcional — só se o backend existir) | Páginas consolidadas das sessões, handoffs, decisões | Automático pelos hooks; `memory_write_page` só a pedido |
 | Código-fonte | busca AST sob demanda | Símbolos, funções, classes | Não exige build — `smart_search` lê o disco |
 | `docs/arquitetura.html` | HTML archify | Arquitetura navegável (companion de `docs/Arquitetura.md`) | skill `archify` (tipo `architecture`) |
 
@@ -39,7 +40,7 @@ Se nenhum backend de recuperação estiver disponível, registrar aqui e usar Gl
 **Ordem obrigatória.** Só avançar para o passo seguinte quando o anterior não responder.
 
 1. **Pergunta sobre comportamento ou regra de negócio** → `docs/RegrasNegocio.md`, pelo ID da regra ou pelo índice de telas.
-2. **Pergunta sobre histórico, decisão anterior ou bug já resolvido** → `observation_search`; se houver corpus primado, `query_corpus`.
+2. **Pergunta sobre histórico, decisão anterior ou bug já resolvido** → `observation_search` e, se houver corpus primado, `query_corpus` (`claude-mem`); ou `memory_query` (`ai-memory`).
 3. **Localizar código** → `smart_search` (encontra o símbolo) → `smart_outline` (estrutura do arquivo) → `smart_unfold` (só o trecho necessário).
 4. **Leitura completa de arquivos** — somente depois dos passos acima, e apenas nos arquivos identificados.
 

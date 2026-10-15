@@ -62,7 +62,9 @@ Já possui histórico; existe remote; branch principal `main`; branch de desenvo
 
 ## Organização
 
-Criar ou atualizar README; LICENSE; CONTRIBUTING; SECURITY; documentação de deploy; documentação de variáveis de ambiente; requisitos de LGPD, auditoria ou compliance.
+README existe e reflete o projeto (é o 12.º documento da sincronização obrigatória — nunca `n/a`); LICENSE; CONTRIBUTING; SECURITY; documentação de deploy; documentação de variáveis de ambiente; requisitos de LGPD, auditoria ou compliance.
+
+Desvios em relação às preferências de stack da regra global (ver `## Preferências de stack por ecossistema`): informativos, não viram pergunta obrigatória; só confirmar quando houver lacuna real a decidir.
 
 ---
 
