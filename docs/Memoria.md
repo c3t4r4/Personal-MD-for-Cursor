@@ -14,7 +14,7 @@ O Windows ainda abre `powershell.exe` na versão 5.1. Esse host lê um `.ps1` se
 
 ### Testar os instaladores sem tocar `~/.cursor`
 
-Os dois instaladores e o hook honram `CURSOR_CONFIG_DIR`. Teste padrão: `CURSOR_CONFIG_DIR=/tmp/x ./install-init-project.sh ./dist/init-project` e `CURSOR_CONFIG_DIR=/tmp/y pwsh -NoProfile -NonInteractive -File ./install-init-project.ps1 ./dist/init-project`, depois `diff -r /tmp/x /tmp/y`. Segunda rodada deve dar 20 `[pulado, sem TTY]`. Cenário de falha: remover um dos 18 arquivos do pacote → exit 1 e zero arquivos copiados.
+Os dois instaladores e o hook honram `CURSOR_CONFIG_DIR`. Teste padrão: `CURSOR_CONFIG_DIR=/tmp/x ./install-init-project.sh ./dist/init-project` e `CURSOR_CONFIG_DIR=/tmp/y pwsh -NoProfile -NonInteractive -File ./install-init-project.ps1 ./dist/init-project`, depois `diff -r /tmp/x /tmp/y`. Segunda rodada deve dar 21 `[pulado, sem TTY]`. Cenário de falha: remover um dos 19 arquivos do pacote → exit 1 e zero arquivos copiados.
 
 ### `pwsh` no macOS não roda dentro do sandbox do Cursor
 
@@ -48,6 +48,18 @@ Os hooks existentes do `claude-mem` usam caminhos absolutos; o `sessionStart` fo
 
 Os `docs/*` e o `AGENTS.md` iniciais vieram do repositório `Personal-MD-for-Claude` (`initProjectsInstall`), datados de 2026-10-06, com `~/.claude`, `CLAUDE.md`, `.cmd` e `CLAUDE_CONFIG_DIR`. Ao reaproveitar documentação entre as duas variantes, revisar destino, nomes de variáveis, nome do arquivo de instruções e os lançadores — e conferir cada regra contra o código desta variante antes de mantê-la `confirmada`.
 
+### Comparar semver sem `sort -V`
+
+`sort -V` existe no GNU coreutils e no `sort` do macOS atual, mas não em todo BSD/busybox, e o comportamento com prefixo `v` e sufixos varia. `_scan.sh` e o `.sh` usam `semver_maior()` em bash puro (três inteiros, `10#` para evitar octal, sufixo `-rc1` descartado); o `.ps1` usa `Test-SemverMaior` com `[int]::TryParse`. Para testar sem rede: gravar a versão desejada em `~/.cursor/.scan-cache/update-check.out` (cache de 24 h) e rodar `_scan.sh capacidades` com `CURSOR_CONFIG_DIR` apontando para uma pasta temporária.
+
+### API de releases do GitHub sem token
+
+`GET /repos/<owner>/<repo>/releases/latest` responde 404 enquanto não há release publicada (não é erro de rede) e tem limite anônimo de 60 requisições/hora por IP — por isso o cache de 24 h no `_scan.sh` e a falha silenciosa nos três lugares. O `sed` que extrai `tag_name` foi validado contra a resposta real de outro repositório (`rtk-ai/rtk`). Em PowerShell 5.1, forçar TLS 1.2 (`[Net.ServicePointManager]::SecurityProtocol`) antes do `Invoke-RestMethod`, senão a chamada falha em máquinas antigas.
+
+### Limites do archify
+
+`meta.views[].note` aceita no máximo 140 caracteres e `sublabel` de nó cabe em ~84 px; textos mais longos falham na validação (`schema/maxLength`) antes de renderizar. Encurtar em vez de quebrar linha.
+
 ## Histórico
 
 | Data | Alteração |
@@ -55,3 +67,4 @@ Os `docs/*` e o `AGENTS.md` iniciais vieram do repositório `Personal-MD-for-Cla
 | 2026-10-06 | Versão original no repositório irmão: BOM, ExecutionPolicy, Git Bash/WSL, winget e npx.cmd. |
 | 2026-10-15 | Reescrito para o Cursor: BOM mantido, `CURSOR_CONFIG_DIR` para testes, sandbox × `pwsh`, shell persistente, `sed`/`perl`, comparação de tabelas, arquivos reais do Cursor, `rtk init`, hook absoluto, origem dos docs. |
 | 2026-10-15 | ExecutionPolicy e `.cmd` (CRLF, sem acentos, `pwsh` → `powershell`). |
+| 2026-10-15 | Semver sem `sort -V`, API de releases sem token (404 sem release, 60 req/h, TLS 1.2 no PS 5.1), limites do archify; teste e2e passa a esperar 21 `[pulado, sem TTY]`. |

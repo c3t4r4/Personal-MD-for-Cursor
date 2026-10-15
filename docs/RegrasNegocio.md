@@ -27,7 +27,7 @@ Não apagar regra. Regra que deixar de valer fica `revogada`, com data e motivo.
 
 | Termo | Significado | Onde aparece |
 | --- | --- | --- |
-| Pacote | Pasta com os 18 arquivos obrigatórios (+ 2 opcionais) do `/init-project` | `dist/init-project/`, argumento dos instaladores |
+| Pacote | Pasta com os 19 arquivos obrigatórios (+ 2 opcionais) do `/init-project` | `dist/init-project/`, argumento dos instaladores |
 | Destino | Configuração global do Cursor | `~/.cursor` (macOS/Linux), `%USERPROFILE%\.cursor` (Windows), ou `CURSOR_CONFIG_DIR` |
 | TTY | Terminal em que o usuário pode responder | `/dev/tty` no bash; console não redirecionado e sem `-NonInteractive` no PowerShell |
 | Os 12 documentos | 11 `docs/*` + `README.md` da tabela de sincronização obrigatória | regra global, templates, comando |
@@ -46,7 +46,7 @@ Não há telas. As regras são de linha de comando e de conteúdo do pacote.
 ### RN-INSTALADOR-001 — Integridade antes da cópia
 
 - **Status:** `confirmada`
-- **Enunciado:** Os 18 caminhos relativos precisam existir como arquivo na pasta do pacote. Se faltar algum, o instalador lista os ausentes, termina com código 1 e não copia nenhum arquivo para o destino. Os 2 opcionais (`hooks/session-scan.sh`, `hooks.json.snippet`) não entram nessa conferência.
+- **Enunciado:** Os 19 caminhos relativos precisam existir como arquivo na pasta do pacote. Se faltar algum, o instalador lista os ausentes, termina com código 1 e não copia nenhum arquivo para o destino. Os 2 opcionais (`hooks/session-scan.sh`, `hooks.json.snippet`) não entram nessa conferência.
 - **Rastreabilidade:** `install-init-project.sh`, `install-init-project.ps1`; testado em 2026-10-15 removendo `RAG.md.tpl.md` do pacote.
 
 ### RN-INSTALADOR-002 — Arquivo novo
@@ -82,7 +82,7 @@ Não há telas. As regras são de linha de comando e de conteúdo do pacote.
 ### RN-INSTALADOR-007 — Capacidades no Windows
 
 - **Status:** `confirmada`
-- **Enunciado:** No Windows, `_scan.sh capacidades` roda pelo bash do Git for Windows (procurado em `%ProgramFiles%\Git\bin`, `%ProgramFiles(x86)%\Git\bin` e `%LOCALAPPDATA%\Programs\Git\bin`, nessa ordem) ou, na falta dele, por um `bash` no `PATH`. Sem bash, o instalador avisa, sugere Git for Windows ou WSL com `CURSOR_CONFIG_DIR=/mnt/c/Users/<usuario>/.cursor`, e a instalação dos 18 arquivos permanece válida. O `bash.exe` de `System32` (WSL) não é preferido porque não enxerga caminhos do Windows sem conversão.
+- **Enunciado:** No Windows, `_scan.sh capacidades` roda pelo bash do Git for Windows (procurado em `%ProgramFiles%\Git\bin`, `%ProgramFiles(x86)%\Git\bin` e `%LOCALAPPDATA%\Programs\Git\bin`, nessa ordem) ou, na falta dele, por um `bash` no `PATH`. Sem bash, o instalador avisa, sugere Git for Windows ou WSL com `CURSOR_CONFIG_DIR=/mnt/c/Users/<usuario>/.cursor`, e a instalação dos 19 arquivos permanece válida. O `bash.exe` de `System32` (WSL) não é preferido porque não enxerga caminhos do Windows sem conversão.
 - **Rastreabilidade:** `install-init-project.ps1`
 
 ### RN-INSTALADOR-008 — Componentes opcionais só com sim
@@ -100,7 +100,7 @@ Não há telas. As regras são de linha de comando e de conteúdo do pacote.
 ### RN-INSTALADOR-010 — Paridade entre instaladores
 
 - **Status:** `confirmada`
-- **Enunciado:** O `.ps1` replica o `.sh`: mesma lista `FILES` (18) e `OPTIONAL_FILES` (2), mesma ordem de cópia, mesmas mensagens em português, mesmo resumo (novos / sobrescritos / pulados / total). Rodados sobre o mesmo pacote com destinos temporários, os dois produzem árvores idênticas (`diff -r`).
+- **Enunciado:** O `.ps1` replica o `.sh`: mesma lista `FILES` (19) e `OPTIONAL_FILES` (2), mesma ordem de cópia, mesmas mensagens em português, mesmo resumo (novos / sobrescritos / pulados / total). Rodados sobre o mesmo pacote com destinos temporários, os dois produzem árvores idênticas (`diff -r`).
 - **Rastreabilidade:** `install-init-project.sh`, `install-init-project.ps1`; conferido em 2026-10-15.
 
 ### RN-INSTALADOR-012 — Lançador `.cmd` só lança
@@ -122,7 +122,7 @@ Não há telas. As regras são de linha de comando e de conteúdo do pacote.
 ### RN-PACOTE-001 — Lista de arquivos em três lugares
 
 - **Status:** `confirmada`
-- **Enunciado:** A lista dos 18 arquivos obrigatórios existe em `install-init-project.sh`, `install-init-project.ps1` e `package-init-project.sh` e deve ser idêntica nos três. Arquivo novo no pacote entra nos três na mesma tarefa.
+- **Enunciado:** A lista dos 19 arquivos obrigatórios existe em `install-init-project.sh`, `install-init-project.ps1` e `package-init-project.sh` e deve ser idêntica nos três. Arquivo novo no pacote entra nos três na mesma tarefa.
 - **Rastreabilidade:** arrays `FILES` / `$Files`
 
 ### RN-PACOTE-002 — Tabela de gatilhos em quatro cópias
@@ -174,7 +174,7 @@ Não há telas. As regras são de linha de comando e de conteúdo do pacote.
 ### RN-SCAN-003 — Cache do modo `projeto`
 
 - **Status:** `confirmada`
-- **Enunciado:** `projeto` é cacheado em `~/.cursor/.scan-cache/`, fora do repositório, invalidado pelo mtime de `.git/HEAD`, `.git/index`, raiz, `docs/`, `.cursor/` e do próprio script, e expira em 6 h. `--no-cache` força nova varredura; `--check` do `/init-project` sempre usa `--no-cache`. O modo `capacidades` nunca é cacheado.
+- **Enunciado:** `projeto` é cacheado em `~/.cursor/.scan-cache/`, fora do repositório, invalidado pelo mtime de `.git/HEAD`, `.git/index`, raiz, `docs/`, `.cursor/` e do próprio script, e expira em 6 h. `--no-cache` força nova varredura; `--check` do `/init-project` sempre usa `--no-cache`. O modo `capacidades` nunca é cacheado; a única exceção é a consulta de rede da seção `[VERSAO]`, cacheada 24 h em `update-check.out` (RN-VERSAO-001).
 - **Rastreabilidade:** `templates/init-project/_scan.sh`, `commands/init-project.md` (FASE 2 — Cache)
 
 ### RN-HOOK-001 — O hook nunca bloqueia a sessão
@@ -185,6 +185,22 @@ Não há telas. As regras são de linha de comando e de conteúdo do pacote.
 
 ---
 
+## Regras — versão e atualização (`VERSION`, releases do GitHub)
+
+### RN-VERSAO-001 — Aviso de atualização só informa
+
+- **Status:** `confirmada`
+- **Enunciado:** A versão do pacote é o conteúdo de `dist/init-project/VERSION` (semver `X.Y.Z`), instalado em `<destino>/VERSION`. Instaladores e `_scan.sh capacidades` (seção `[VERSAO]`) comparam a versão instalada/do pacote com o `tag_name` de `api.github.com/repos/c3t4r4/Personal-MD-for-Cursor/releases/latest` (prefixo `v` opcional). A consulta é anônima (sem token, sem cabeçalhos), tem 5 s de timeout e falha em silêncio (`indisponivel`). No `_scan.sh` a resposta é cacheada 24 h em `~/.cursor/.scan-cache/update-check.out`. `PERSONAL_MD_NO_UPDATE_CHECK=1` desliga a consulta nos três (`desativado`). **Nunca** baixa, atualiza ou roda o instalador: a saída é só `instalada`, `ultima_release`, `atualizacao: disponivel|nao|desconhecido` e `url`. O `/init-project` avisa uma única vez, na FASE 0.5, apenas quando `disponivel`; `indisponivel` e `desativado` são silenciosos.
+- **Rastreabilidade:** `install-init-project.sh` (`-- Versão do pacote --`), `install-init-project.ps1` (idem), `templates/init-project/_scan.sh` (`release_mais_recente`, `semver_maior`, `[VERSAO]`), `commands/init-project.md` (FASE 0.5 — Versão do pacote), `_capacidades.md` (Atualização do pacote); testado em 2026-10-15 com cache simulado (`1.0.0` → `1.2.0` = `disponivel`), opt-out e API sem release.
+
+### RN-VERSAO-002 — Tag, `VERSION` e `CHANGELOG.md` andam juntos
+
+- **Status:** `confirmada`
+- **Enunciado:** Uma release só existe como tag `v<VERSION>` em `main`. O workflow `.github/workflows/release.yml` recusa a tag quando `v` + `VERSION` difere do nome da tag, quando `CHANGELOG.md` não tem a seção `## [<VERSION>]`, quando o `shellcheck` falha ou quando as três listas `FILES` divergem ou citam arquivo ausente do pacote (RN-PACOTE-001). Passando, anexa `init-project-<VERSION>.tar.gz`, `.zip`, os três instaladores e `SHA256SUMS.txt`, com notas extraídas da seção do changelog. Comparação semver considera só os três números; sufixo de pré-release é ignorado (`1.0.0-rc1` não é maior que `1.0.0`).
+- **Rastreabilidade:** `.github/workflows/release.yml`, `CHANGELOG.md`, `dist/init-project/VERSION`; passos de validação reproduzidos localmente em 2026-10-15 (ainda sem execução real no GitHub Actions).
+
+---
+
 ## Histórico
 
 | Data | Alteração |
@@ -192,3 +208,4 @@ Não há telas. As regras são de linha de comando e de conteúdo do pacote.
 | 2026-10-06 | Documento original criado no repositório irmão (Claude Code) com RN-INSTALADOR-001 a 010. |
 | 2026-10-15 | Reescrito para o Cursor: destino `~/.cursor`/`CURSOR_CONFIG_DIR`, sem `.cmd`; RN-INSTALADOR-006/007/008 revisadas contra o código real; 009 (chmod) e 010 (paridade) novas; antiga 009/010 (mesmo arquivo / destino-pasta) viram RN-INSTALADOR-011 `a definir`; criadas RN-PACOTE-001 a 006, RN-SCAN-001 a 003 e RN-HOOK-001. |
 | 2026-10-15 | RN-INSTALADOR-008: `.sh` sem TTY passa a imprimir o comando manual do rtk (paridade com o `.ps1`). RN-INSTALADOR-012 criada com o lançador `install-init-project.cmd`. |
+| 2026-10-15 | `VERSION` vira o 19.º arquivo obrigatório (RN-INSTALADOR-001, 007, 010, RN-PACOTE-001, glossário). RN-SCAN-003 ganha a exceção da consulta de release. Criadas RN-VERSAO-001 (aviso de atualização só informa) e RN-VERSAO-002 (tag, `VERSION` e `CHANGELOG.md` juntos). |

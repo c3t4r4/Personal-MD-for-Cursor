@@ -30,6 +30,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_PACKAGE_DIR="${SCRIPT_DIR}/dist/init-project"
 
 FILES=(
+  "VERSION"
   "rules/personal-md-global.mdc"
   "commands/init-project.md"
   "templates/init-project/_scan.sh"
@@ -91,6 +92,13 @@ if (( ${#missing[@]} > 0 )); then
 fi
 
 echo "==> OK: os ${#FILES[@]} arquivos esperados estão presentes em ${PACKAGE_DIR}."
+
+# Versão instalada ANTES da cópia, para o relatório final mostrar de → para.
+VERSAO_ANTES="nenhuma"
+if [[ -f "${CURSOR_HOME}/VERSION" ]]; then
+  VERSAO_ANTES="$(tr -d '[:space:]' < "${CURSOR_HOME}/VERSION")"
+fi
+VERSAO_PACOTE="$(tr -d '[:space:]' < "${PACKAGE_DIR}/VERSION")"
 
 mkdir -p "${CURSOR_HOME}"
 mkdir -p "${CURSOR_HOME}/commands"
@@ -308,6 +316,46 @@ else
   if [[ -f "${CURSOR_HOME}/hooks.json.snippet" ]]; then
     echo "  Fragmento disponível em ${CURSOR_HOME}/hooks.json.snippet"
   fi
+fi
+
+echo ""
+echo "-- Versão do pacote --"
+# Compara semver "a" > "b" (só os três números; sufixos ignorados). Retorna 0 se a > b.
+semver_maior() {
+  local a="${1#v}" b="${2#v}" i
+  local -a pa pb
+  IFS=. read -r -a pa <<<"${a%%-*}"
+  IFS=. read -r -a pb <<<"${b%%-*}"
+  for i in 0 1 2; do
+    local x="${pa[i]:-0}" y="${pb[i]:-0}"
+    [[ "$x" =~ ^[0-9]+$ ]] || x=0
+    [[ "$y" =~ ^[0-9]+$ ]] || y=0
+    (( 10#$x > 10#$y )) && return 0
+    (( 10#$x < 10#$y )) && return 1
+  done
+  return 1
+}
+RELEASES_URL="https://github.com/c3t4r4/Personal-MD-for-Cursor/releases/latest"
+RELEASES_API="https://api.github.com/repos/c3t4r4/Personal-MD-for-Cursor/releases/latest"
+echo "pacote: ${VERSAO_PACOTE}  |  instalada antes: ${VERSAO_ANTES}"
+if [[ "${PERSONAL_MD_NO_UPDATE_CHECK:-0}" == "1" ]]; then
+  echo "última release: desativado (PERSONAL_MD_NO_UPDATE_CHECK=1)"
+elif command -v curl >/dev/null 2>&1; then
+  # Só lê o tag_name da release pública. Sem token, sem cabeçalhos, 5 s de timeout.
+  ULTIMA="$(curl -fsS -m 5 "${RELEASES_API}" 2>/dev/null | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"v\{0,1\}\([^"]*\)".*/\1/p' | head -n 1)"
+  if [[ -n "${ULTIMA}" ]]; then
+    echo "última release: ${ULTIMA}"
+    if semver_maior "${ULTIMA}" "${VERSAO_PACOTE}"; then
+      echo "  ℹ Há versão mais nova que este pacote (${VERSAO_PACOTE} → ${ULTIMA}). Nada foi baixado."
+      echo "    Baixe em ${RELEASES_URL} e rode este instalador de novo apontando para a pasta extraída."
+    else
+      echo "  ok: este pacote está na versão mais recente publicada."
+    fi
+  else
+    echo "última release: indisponivel (sem rede ou sem release publicada)"
+  fi
+else
+  echo "última release: indisponivel (curl ausente)"
 fi
 
 echo ""

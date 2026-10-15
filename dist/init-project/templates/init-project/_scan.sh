@@ -227,9 +227,81 @@ PY
     fi
   done
 
+  # Versao do pacote instalado x ultima release no GitHub. Informativo:
+  # nunca baixa nem instala nada. A consulta e cacheada por 24 h em
+  # $CACHE_DIR/update-check.out para nao bater na API a cada sessao
+  # (limite anonimo: 60 req/h por IP). Opt-out: PERSONAL_MD_NO_UPDATE_CHECK=1.
+  echo
+  echo "[VERSAO]"
+  local instalada="nenhuma" ultima="" estado="desconhecido"
+  if [ -f "$CURSOR_HOME/VERSION" ]; then
+    instalada="$(tr -d '[:space:]' < "$CURSOR_HOME/VERSION")"
+  fi
+  echo "instalada: $instalada"
+  if [ "${PERSONAL_MD_NO_UPDATE_CHECK:-0}" = "1" ]; then
+    echo "ultima_release: desativado"
+  else
+    ultima="$(release_mais_recente)"
+    if [ -n "$ultima" ]; then
+      echo "ultima_release: $ultima"
+      if [ "$instalada" = "nenhuma" ]; then
+        estado="desconhecido"
+      elif semver_maior "$ultima" "$instalada"; then
+        estado="disponivel"
+      else
+        estado="nao"
+      fi
+    else
+      echo "ultima_release: indisponivel"
+    fi
+  fi
+  echo "atualizacao: $estado"
+  echo "url: $RELEASES_URL"
+
   echo
   echo "[NOTA]"
   echo "MCP de memoria nao e verificavel por script — testar chamando list_corpora (claude-mem) e memory_status (ai-memory)."
+}
+
+# Compara semver: retorna 0 quando $1 > $2 (so os tres numeros; sufixo ignorado).
+semver_maior() {
+  local a="${1#v}" b="${2#v}" i x y
+  local -a pa pb
+  IFS=. read -r -a pa <<<"${a%%-*}"
+  IFS=. read -r -a pb <<<"${b%%-*}"
+  for i in 0 1 2; do
+    x="${pa[i]:-0}"; y="${pb[i]:-0}"
+    case "$x" in ''|*[!0-9]*) x=0 ;; esac
+    case "$y" in ''|*[!0-9]*) y=0 ;; esac
+    [ "$((10#$x))" -gt "$((10#$y))" ] && return 0
+    [ "$((10#$x))" -lt "$((10#$y))" ] && return 1
+  done
+  return 1
+}
+
+RELEASES_URL="https://github.com/c3t4r4/Personal-MD-for-Cursor/releases/latest"
+RELEASES_API="https://api.github.com/repos/c3t4r4/Personal-MD-for-Cursor/releases/latest"
+
+# Ecoa a versao da ultima release (sem o "v"), ou nada. Cache de 24 h.
+release_mais_recente() {
+  local f="$CACHE_DIR/update-check.out" idade agora valor
+  if [ -f "$f" ]; then
+    agora="$(date +%s)"
+    idade=$(( agora - $(stat -f %m "$f" 2>/dev/null || stat -c %Y "$f" 2>/dev/null || echo 0) ))
+    if [ "$idade" -lt 86400 ]; then
+      cat "$f"
+      return 0
+    fi
+  fi
+  command -v curl >/dev/null 2>&1 || return 0
+  # Apenas o tag_name da release publica; sem token, sem cabecalhos.
+  valor="$(curl -fsS -m 5 "$RELEASES_API" 2>/dev/null \
+    | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"v\{0,1\}\([^"]*\)".*/\1/p' | head -n 1)"
+  if [ -n "$valor" ]; then
+    mkdir -p "$CACHE_DIR" 2>/dev/null && printf '%s\n' "$valor" > "$f" 2>/dev/null
+    printf '%s\n' "$valor"
+  fi
+  return 0
 }
 
 # ----------------------------------------------------------------- projeto

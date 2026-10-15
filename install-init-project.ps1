@@ -49,6 +49,7 @@ $DefaultPackageDir = Join-Path $CursorHome 'initProjectsInstall\dist\init-projec
 
 # Mesma lista do install-init-project.sh. Manter os dois em sincronia.
 $Files = @(
+  'VERSION',
   'rules/personal-md-global.mdc',
   'commands/init-project.md',
   'templates/init-project/_scan.sh',
@@ -116,6 +117,14 @@ if ($missing.Count -gt 0) {
 }
 
 Write-Host ("==> OK: os {0} arquivos esperados estão presentes em {1}." -f $Files.Count, $ResolvedPackageDir)
+
+# Versão instalada ANTES da cópia, para o relatório final mostrar de → para.
+$VersaoAntes = 'nenhuma'
+$VersaoInstaladaPath = Join-Path $CursorHome 'VERSION'
+if (Test-Path -LiteralPath $VersaoInstaladaPath -PathType Leaf) {
+  $VersaoAntes = (Get-Content -LiteralPath $VersaoInstaladaPath -Raw).Trim()
+}
+$VersaoPacote = (Get-Content -LiteralPath (Join-Path $ResolvedPackageDir 'VERSION') -Raw).Trim()
 
 foreach ($d in @('', 'commands', 'rules', 'templates\init-project', 'hooks')) {
   $p = Join-Path $CursorHome $d
@@ -358,6 +367,52 @@ if (Test-Path -LiteralPath $HooksJson -PathType Leaf) {
   }
 }
 Write-Host '  No Windows o hook depende de bash.exe acessível pelo Cursor — não verificado por este instalador.'
+
+Write-Host ''
+Write-Host '-- Versão do pacote --'
+
+# Compara semver: $true quando $A > $B (só os três números; sufixos ignorados).
+function Test-SemverMaior {
+  param([string]$A, [string]$B)
+  $pa = (($A -replace '^v', '') -split '-')[0] -split '\.'
+  $pb = (($B -replace '^v', '') -split '-')[0] -split '\.'
+  for ($i = 0; $i -lt 3; $i++) {
+    $x = 0; $y = 0
+    if ($i -lt $pa.Count) { [void][int]::TryParse($pa[$i], [ref]$x) }
+    if ($i -lt $pb.Count) { [void][int]::TryParse($pb[$i], [ref]$y) }
+    if ($x -gt $y) { return $true }
+    if ($x -lt $y) { return $false }
+  }
+  return $false
+}
+
+$ReleasesUrl = 'https://github.com/c3t4r4/Personal-MD-for-Cursor/releases/latest'
+$ReleasesApi = 'https://api.github.com/repos/c3t4r4/Personal-MD-for-Cursor/releases/latest'
+Write-Host ("pacote: {0}  |  instalada antes: {1}" -f $VersaoPacote, $VersaoAntes)
+if ($env:PERSONAL_MD_NO_UPDATE_CHECK -eq '1') {
+  Write-Host 'última release: desativado (PERSONAL_MD_NO_UPDATE_CHECK=1)'
+} else {
+  $Ultima = ''
+  try {
+    # Só lê o tag_name da release pública. Sem token, 5 s de timeout.
+    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+    $rel = Invoke-RestMethod -Uri $ReleasesApi -TimeoutSec 5 -UseBasicParsing -ErrorAction Stop
+    if ($rel -and $rel.tag_name) { $Ultima = ([string]$rel.tag_name) -replace '^v', '' }
+  } catch {
+    $Ultima = ''
+  }
+  if ($Ultima) {
+    Write-Host "última release: $Ultima"
+    if (Test-SemverMaior $Ultima $VersaoPacote) {
+      Write-Host ("  ℹ Há versão mais nova que este pacote ({0} → {1}). Nada foi baixado." -f $VersaoPacote, $Ultima)
+      Write-Host "    Baixe em $ReleasesUrl e rode este instalador de novo apontando para a pasta extraída."
+    } else {
+      Write-Host '  ok: este pacote está na versão mais recente publicada.'
+    }
+  } else {
+    Write-Host 'última release: indisponivel (sem rede ou sem release publicada)'
+  }
+}
 
 Write-Host ''
 Write-Host '-- MCP de memória --'

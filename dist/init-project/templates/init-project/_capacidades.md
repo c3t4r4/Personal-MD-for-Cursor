@@ -118,6 +118,26 @@ Lê **todo arquivo-fonte na íntegra**. Custa muito em repositório grande.
 
 Nunca executar automaticamente. Oferecer como sugestão no resumo final, com o custo declarado, e deixar a decisão com o usuário.
 
+## Atualização do pacote Personal-MD
+
+O pacote instalado em `~/.cursor` tem versão em `~/.cursor/VERSION` (semver). Cada release publicada em <https://github.com/c3t4r4/Personal-MD-for-Cursor/releases> é a tag `v<versão>`, com o conteúdo de `dist/init-project/` anexado em `.tar.gz` e `.zip`.
+
+`_scan.sh capacidades` compara as duas na seção `[VERSAO]`:
+
+```text
+[VERSAO]
+instalada: 1.0.0
+ultima_release: 1.1.0        # ou indisponivel (sem rede / sem release) ou desativado
+atualizacao: disponivel      # ou nao, ou desconhecido
+url: https://github.com/c3t4r4/Personal-MD-for-Cursor/releases/latest
+```
+
+Como funciona e o que não faz:
+
+- A consulta lê apenas o `tag_name` da release pública, sem token e sem cabeçalhos, com 5 s de timeout; a resposta fica cacheada 24 h em `~/.cursor/.scan-cache/update-check.out`. Falha de rede é silenciosa.
+- Opt-out: `PERSONAL_MD_NO_UPDATE_CHECK=1` no ambiente (vale para o script e para os instaladores).
+- **Nada é baixado nem instalado.** O agente só avisa, uma vez, quando `atualizacao: disponivel`. Atualizar é decisão do usuário: baixar a release, extrair e rodar `install-init-project.sh ./init-project` (macOS/Linux) ou `install-init-project.cmd .\init-project` (Windows). O instalador mostra o diff e pergunta arquivo por arquivo antes de sobrescrever.
+
 ## Como reportar
 
 Na FASE 0.5, apresentar uma tabela com uma linha por capacidade — `disponível` ou `ausente`, e o fallback que será usado. Repetir no resumo final e gravar em `docs/RAG.md`, datada. Mencionar instalação **apenas** para o que é relevante a este projeto: sem frontend, não sugerir `ui-ux-pro-max`.

@@ -143,6 +143,12 @@ Regras:
 - **Nunca instalar nada.** Não instalar plugins/MCP automaticamente, não editar hooks/settings sem autorização. A instrução é informativa.
 - Levar a tabela para o resumo final e para `docs/RAG.md`.
 
+**Versão do pacote.** A seção `[VERSAO]` da mesma saída traz `instalada`, `ultima_release` (consulta ao GitHub, cacheada por 24 h) e `atualizacao: disponivel | nao | desconhecido`. Só quando for `disponivel`, avisar uma única vez, na apresentação da tabela:
+
+> Há uma versão mais nova do Personal-MD (`<instalada>` → `<ultima_release>`): `<url>`. Para atualizar, baixe a release e rode `install-init-project.sh` (ou `.cmd` no Windows) apontando para a pasta extraída. Nada foi alterado.
+
+`indisponivel` (sem rede, sem release) e `desativado` (`PERSONAL_MD_NO_UPDATE_CHECK=1`) são silenciosos — não citar. O aviso não entra em `docs/RAG.md` nem no resumo final: é efêmero por natureza. **Nunca baixar, atualizar ou rodar o instalador por conta própria.**
+
 Em `--check`, apenas reportar. Não sugerir instalação.
 
 ---

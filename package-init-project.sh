@@ -30,6 +30,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIST="${SCRIPT_DIR}/dist/init-project"
 
 FILES=(
+  "VERSION"
   "rules/personal-md-global.mdc"
   "commands/init-project.md"
   "templates/init-project/_scan.sh"

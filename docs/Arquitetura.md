@@ -17,7 +17,7 @@ Este repositório é a **fonte** da governança Personal-MD para o Cursor e o me
 
 | Peça | Função |
 | --- | --- |
-| `package-init-project.sh` | Lê os 18 arquivos de `~/.cursor` (ou do próprio repo com `PACKAGE_FROM_REPO=1`) e publica `dist/init-project/`. |
+| `package-init-project.sh` | Lê os 19 arquivos de `~/.cursor` (ou do próprio repo com `PACKAGE_FROM_REPO=1`) e publica `dist/init-project/`. |
 | `dist/init-project/` | O pacote. A estrutura relativa é a mesma do destino (`rules/`, `commands/`, `templates/init-project/`, `hooks/`). |
 | `install-init-project.sh` | Instala o pacote em `~/.cursor` no macOS e no Linux. |
 | `install-init-project.ps1` | Instala o mesmo pacote em `%USERPROFILE%\.cursor` no Windows. |
@@ -28,14 +28,33 @@ Este repositório é a **fonte** da governança Personal-MD para o Cursor e o me
 | `templates/init-project/_scan.sh` | Varredura em bash: `capacidades` (agentes, skills, MCPs por nome, plugins, marketplaces, binários), `projeto [--no-cache]` (manifestos, locks, qualidade, Docker, código, testes, governança, Git), `sessao` (resumo curto para o hook). |
 | `templates/init-project/_capacidades.md`, `_checklist-entrevista.md`, `_varredura-regras.md` | Apoio ao comando: instalação de capacidades ausentes, cobertura da entrevista, procedimento do modo `--regras`. |
 | `hooks/session-scan.sh` + `hooks.json.snippet` | Hook `sessionStart` opcional: roda `_scan.sh sessao` e devolve `followup_message`. |
+| `VERSION` | Versão semver do pacote (instalada em `<destino>/VERSION`). Lida pelos instaladores e por `_scan.sh capacidades` (`[VERSAO]`) para comparar com a última release. |
+| `CHANGELOG.md` + `.github/workflows/release.yml` | Publicação: em tag `v<VERSION>`, o workflow valida (tag = `VERSION`, seção no changelog, `shellcheck`, paridade `FILES`), empacota `dist/init-project/` e cria a GitHub Release. Não instala nada em lugar nenhum. |
 | `.gitattributes` | LF para `.sh`, `.md`, `.mdc`, `.json`; CRLF para `.ps1` e `.cmd`. |
 
 ## Fluxo de instalação
 
 1. O usuário entrega a pasta do pacote, ou o script usa `./dist/init-project` relativo a si, ou `<destino>/initProjectsInstall/dist/init-project`.
-2. Os 18 arquivos são conferidos. Qualquer ausência encerra o processo antes da cópia (RN-INSTALADOR-001).
+2. Os 19 arquivos são conferidos. Qualquer ausência encerra o processo antes da cópia (RN-INSTALADOR-001).
 3. Cada arquivo novo é copiado. Cada arquivo já presente espera `s`, `N` ou `d`; sem terminal, permanece (RN-INSTALADOR-003/004).
-4. O resumo imprime contagens. Em seguida o relatório de capacidades, RTK, archify, hook e backend de memória roda sem mudar o código de saída (RN-INSTALADOR-005).
+4. O resumo imprime contagens. Em seguida o relatório de capacidades, RTK, archify, hook, versão do pacote e backend de memória roda sem mudar o código de saída (RN-INSTALADOR-005).
+
+## Fluxo de versão e atualização
+
+```text
+dist/init-project/VERSION ──commit + tag v<VERSION>──▶ GitHub Actions (release.yml)
+                                                          │ valida, empacota, cria Release
+                                                          ▼
+                              api.github.com/.../releases/latest  (tag_name)
+                                                          ▲
+   install-init-project.{sh,ps1}  ── curl / Invoke-RestMethod, 5 s, anônimo ──┤
+   _scan.sh capacidades [VERSAO]  ── idem, cache 24 h em .scan-cache ─────────┘
+                                                          │
+                                                          ▼
+                     "há versão mais nova" + URL  (nunca baixa, nunca instala)
+```
+
+A comparação semver é feita em bash puro e em PowerShell (sem `sort -V`, que difere entre BSD e GNU), considerando só `X.Y.Z`. Opt-out por `PERSONAL_MD_NO_UPDATE_CHECK=1` (RN-VERSAO-001/002).
 
 O destino é `CURSOR_CONFIG_DIR` quando definido — a mesma variável que `hooks/session-scan.sh` usa — o que permite testar os dois instaladores em pastas temporárias e usar WSL apontando para o perfil do Windows.
 
@@ -52,7 +71,7 @@ O destino é `CURSOR_CONFIG_DIR` quando definido — a mesma variável que `hook
                         └── ./AGENTS.md + ./docs/* + README.md  (prioridade 3–4)
 ```
 
-A tabela de sincronização (12 documentos) existe em quatro cópias que devem ser idênticas (RN-PACOTE-002). A lista dos 18 arquivos existe em três (RN-PACOTE-001).
+A tabela de sincronização (12 documentos) existe em quatro cópias que devem ser idênticas (RN-PACOTE-002). A lista dos 19 arquivos existe em três (RN-PACOTE-001).
 
 ## Decisões
 
@@ -63,6 +82,7 @@ A tabela de sincronização (12 documentos) existe em quatro cópias que devem s
 - **Dois backends de memória** (`claude-mem`, `ai-memory`) detectados por chamada MCP, nunca instalados pelo comando.
 - **Preferências de stack são sugestão**, nunca aplicação automática — mesmo em projeto novo.
 - **Segurança por construção:** nenhum script imprime `mcp.json`, `hooks.json` ou `.env`; `_scan.sh` lista só nomes de servidores MCP.
+- **Atualização é aviso, não ação.** A única chamada de rede do pacote é anônima, lê um campo de uma release pública e falha em silêncio. Atualizar continua sendo rodar o instalador, que mostra diff e pergunta arquivo por arquivo. Fonte da verdade da versão é a release do GitHub, não o `git pull`, para que quem instalou por pasta/USB também seja avisado.
 
 ## Histórico
 
@@ -71,3 +91,4 @@ A tabela de sincronização (12 documentos) existe em quatro cópias que devem s
 | 2026-10-06 | Versão original no repositório irmão (Claude Code), com instalador Windows. |
 | 2026-10-15 | Reescrito para o Cursor: destino `~/.cursor`, `CURSOR_CONFIG_DIR`, sem `.cmd`, peças do pacote detalhadas, camadas de governança, decisões atualizadas; `docs/arquitetura.html` regenerado. |
 | 2026-10-15 | Lançador `install-init-project.cmd` adicionado às peças; `.gitattributes` cobre `.cmd`; `docs/arquitetura.html` regenerado. |
+| 2026-10-15 | Versionamento: `VERSION` (19.º arquivo), `CHANGELOG.md`, workflow de release, seção "Fluxo de versão e atualização", decisão "Atualização é aviso, não ação"; `docs/arquitetura.html` regenerado. |

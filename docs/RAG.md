@@ -80,6 +80,8 @@ Caminhos excluídos da indexação:
 ~/.cursor/.scan-cache/
 ```
 
+`~/.cursor/.scan-cache/update-check.out` (cache de 24 h da última release, só um número de versão) está dentro do diretório já excluído; não contém segredo, mas também não tem valor de recuperação.
+
 Se um segredo entrar em um índice por engano: reconstruir o índice do zero e registrar em `docs/Memoria.md`.
 
 ---
@@ -103,6 +105,7 @@ Se um segredo entrar em um índice por engano: reconstruir o índice do zero e r
 - Última indexação: nunca.
 - Arquitetura HTML (`docs/arquitetura.html`): gerado em 2026-10-15 a partir de `docs/archify/instalacao.workflow.json` (workflow v2, perfil `showcase`).
 - Observações registradas: 2 explícitas (`save_memory`) + capturas automáticas dos hooks do `claude-mem`.
+- Versão do pacote: `_scan.sh capacidades` passou a emitir `[VERSAO]` (instalada × última release do GitHub, cache de 24 h, opt-out `PERSONAL_MD_NO_UPDATE_CHECK=1`). Não é fonte de contexto para o RAG — é aviso efêmero da FASE 0.5 e não deve ser gravado em observação nem neste documento nos projetos governados.
 
 ---
 
@@ -112,3 +115,5 @@ Se um segredo entrar em um índice por engano: reconstruir o índice do zero e r
 | --- | --- | --- | --- |
 | 2026-10-15 | `docs/arquitetura.html` | reconstruído | HTML copiado do repositório irmão descrevia o fluxo Windows 11 com `.cmd` e `~/.claude` |
 | 2026-10-15 | corpora `claude-mem` | não criados | repositório pequeno; decisão registrada |
+| 2026-10-15 | `docs/arquitetura.html` | regenerado | nota do relatório final passa a citar versão × release |
+| 2026-10-15 | capacidade `[VERSAO]` | documentada como não indexável | aviso efêmero de atualização, fora do corpus |

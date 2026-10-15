@@ -9,7 +9,7 @@ flowchart TD
     subgraph origem["Máquina de origem"]
         CURSOR_SRC["~/.cursor (customizado)"]
         PKG["package-init-project.sh"]
-        DIST["dist/init-project/<br/>18 arquivos + 2 opcionais"]
+        DIST["dist/init-project/<br/>19 arquivos + 2 opcionais"]
         CURSOR_SRC -->|lê| PKG
         PKG -->|publica| DIST
     end
@@ -39,7 +39,7 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    A["Resolver pasta do pacote<br/>arg → ./dist → destino/initProjectsInstall"] --> B{"18 arquivos<br/>presentes?"}
+    A["Resolver pasta do pacote<br/>arg → ./dist → destino/initProjectsInstall"] --> B{"19 arquivos<br/>presentes?"}
     B -->|não| X["Listar ausentes<br/>exit 1, nada copiado"]
     B -->|sim| C["Para cada arquivo"]
     C --> D{"Existe no destino?"}
@@ -51,9 +51,25 @@ flowchart LR
     H -->|s| J["[sobrescrito]"]
     H -->|N| K["[mantido]"]
     E & G & J & K --> L["Resumo: novos / sobrescritos / pulados"]
-    L --> M["Relatório informativo<br/>_scan.sh capacidades, RTK, archify,<br/>hook sessionStart, backend de memória"]
+    L --> M["Relatório informativo<br/>_scan.sh capacidades, RTK, archify,<br/>hook sessionStart, versão do pacote, backend de memória"]
     M --> N["exit 0"]
 ```
+
+## Versão, release e aviso de atualização
+
+```mermaid
+flowchart LR
+    V["dist/init-project/VERSION<br/>+ CHANGELOG.md"] -->|"git tag v&lt;VERSION&gt; + push"| W["GitHub Actions<br/>release.yml"]
+    W -->|"valida: tag = VERSION, changelog,<br/>shellcheck, paridade FILES"| R["GitHub Release<br/>tar.gz, zip, instaladores, SHA256SUMS"]
+    R --> API["api.github.com/.../releases/latest<br/>(tag_name)"]
+    API -.->|"5 s, anônimo, silencioso"| INST["install-init-project.sh / .ps1<br/>-- Versão do pacote --"]
+    API -.->|"cache 24 h"| SCAN["_scan.sh capacidades<br/>[VERSAO]"]
+    SCAN --> CMD0["/init-project FASE 0.5<br/>avisa uma vez se disponivel"]
+    INST --> AV["Aviso + URL<br/>nunca baixa, nunca instala"]
+    CMD0 --> AV
+```
+
+`PERSONAL_MD_NO_UPDATE_CHECK=1` corta as duas linhas pontilhadas. Atualizar continua sendo rodar o instalador com a pasta da release extraída.
 
 ## Como o pacote governa um projeto
 
@@ -77,3 +93,4 @@ Os instaladores não decidem o que o `/init-project` faz: eles só colocam a reg
 | 2026-10-06 | Versão original no repositório irmão (Claude Code), em ASCII, com o ramo `.cmd`. |
 | 2026-10-15 | Reescrito em Mermaid para o Cursor: destino `~/.cursor`/`CURSOR_CONFIG_DIR`, sem `.cmd`, diagrama interno do instalador e diagrama de governança. |
 | 2026-10-15 | Ramo Windows ganha o lançador `install-init-project.cmd` → `.ps1`. |
+| 2026-10-15 | 19 arquivos; relatório do instalador inclui versão do pacote; novo diagrama "Versão, release e aviso de atualização". |

@@ -10,7 +10,7 @@
         "id": "copia",
         "label": "Pacote até o perfil",
         "focus": ["empacotar", "levar", "validar", "politica", "resumo"],
-        "note": "Os 18 arquivos só seguem depois que a pasta do pacote está completa. Destino: CURSOR_CONFIG_DIR ou ~/.cursor."
+        "note": "Os 19 arquivos só seguem depois que a pasta do pacote está completa. Destino: CURSOR_CONFIG_DIR ou ~/.cursor."
       },
       {
         "id": "excecoes",
@@ -22,7 +22,7 @@
         "id": "relatorio",
         "label": "Relatório final",
         "focus": ["resumo", "verificar"],
-        "note": "Capacidades, RTK, archify, hook e backend de memória informam o ambiente e não desfazem a cópia."
+        "note": "Capacidades, RTK, archify, hook, versão (vs. última release) e memória só informam; não desfazem a cópia nem baixam nada."
       }
     ]
   },
@@ -43,7 +43,7 @@
   "nodes": [
     { "id": "empacotar", "lane": "fluxo", "col": 0, "type": "backend", "label": "Empacotar", "sublabel": "package-init-project.sh" },
     { "id": "levar", "lane": "fluxo", "col": 1, "type": "external", "label": "Levar pasta", "sublabel": "dist/init-project" },
-    { "id": "validar", "lane": "fluxo", "col": 2, "type": "security", "label": "Validar", "sublabel": "18 arquivos", "tag": "antes da cópia" },
+    { "id": "validar", "lane": "fluxo", "col": 2, "type": "security", "label": "Validar", "sublabel": "19 arquivos", "tag": "antes da cópia" },
     { "id": "politica", "lane": "fluxo", "col": 3, "type": "backend", "label": "Copiar", "sublabel": "novo ou s/N/d" },
     { "id": "resumo", "lane": "fluxo", "col": 4, "type": "frontend", "label": "Resumo", "sublabel": "contagens" },
     { "id": "verificar", "lane": "fluxo", "col": 5, "type": "cloud", "label": "Verificar", "sublabel": "scan, RTK, archify", "tag": "não bloqueia" },
@@ -65,7 +65,7 @@
       "dot": "emerald",
       "title": "Cópia protegida",
       "items": [
-        "Nada é instalado se faltar um dos 18 arquivos",
+        "Nada é instalado se faltar um dos 19 arquivos",
         "Arquivo novo entra sem pergunta, bytes preservados",
         "Arquivo existente só muda com a resposta s"
       ]
@@ -85,6 +85,7 @@
       "items": [
         "O resumo conta novos, sobrescritos e pulados",
         "Capacidades, RTK, archify e hook são só informados",
+        "Versão do pacote é comparada à última release; aviso sem download",
         "Backend de memória se confere na sessão: list_corpora ou memory_status"
       ]
     }

@@ -4,7 +4,7 @@ Empacota a governança Personal-MD (`/init-project` + regra global + templates) 
 
 ## Por que isso existe
 
-`/init-project` não é um arquivo isolado: ele depende da regra global, do comando slash e de 16 arquivos de apoio (scan, checklists, templates). Este repositório empacota tudo para instalar em outra máquina sem zip.
+`/init-project` não é um arquivo isolado: ele depende da regra global, do comando slash e de 17 arquivos de apoio (scan, checklists, templates). Este repositório empacota tudo para instalar em outra máquina sem zip.
 
 O pacote instalável é `dist/init-project/`.
 
@@ -22,10 +22,11 @@ O pacote instalável é `dist/init-project/`.
 
 Projeto que ainda tenha só `./CLAUDE.md` continua legível. O `/init-project` propõe renomear esse arquivo para `./AGENTS.md` e não apaga nada sem confirmação.
 
-## Os 18 arquivos obrigatórios
+## Os 19 arquivos obrigatórios
 
 | Arquivo | Papel |
 | --- | --- |
+| `VERSION` | Versão semver do pacote; instalada em `~/.cursor/VERSION` e comparada à última release do GitHub |
 | `rules/personal-md-global.mdc` | Governança global (sempre aplicada no Agent) |
 | `commands/init-project.md` | Comando `/init-project` (9 fases, modos `--check`/`--update`/`--rag`/`--regras`) |
 | `templates/init-project/_scan.sh` | Varredura de capacidades e projeto (único executável obrigatório) |
@@ -77,13 +78,26 @@ Ressalvas no Windows:
 
 ### O que os instaladores fazem
 
-1. Conferem os 18 arquivos.
+1. Conferem os 19 arquivos.
 2. Copiam para a pasta do Cursor (rules, commands, templates, hooks), arquivo a arquivo. O destino é `~/.cursor` (`%USERPROFILE%\.cursor` no Windows); a variável `CURSOR_CONFIG_DIR` sobrepõe isso nos dois instaladores.
 3. Se o destino já existe: perguntam `[s/N/d=ver diff]` — nunca sobrescrevem em silêncio.
 4. Sem terminal interativo: pulam existentes.
-5. Rodam verificação informativa (`_scan.sh capacidades`, RTK, archify, hook, backend de memória).
+5. Rodam verificação informativa (`_scan.sh capacidades`, RTK, archify, hook, versão do pacote, backend de memória).
 
 Depois, no Agent do Cursor, na raiz de um projeto: `/init-project`.
+
+### Versão e aviso de atualização
+
+O pacote tem versão semver em `dist/init-project/VERSION`, instalada em `~/.cursor/VERSION`. Cada versão publicada é uma [GitHub Release](https://github.com/c3t4r4/Personal-MD-for-Cursor/releases) com tag `v<versão>` e o pacote anexado em `.tar.gz`/`.zip` (mais os instaladores e `SHA256SUMS.txt`).
+
+Onde o aviso aparece:
+
+- **Instaladores** (`.sh`/`.ps1`): seção `-- Versão do pacote --` com `pacote`, `instalada antes` e `última release`. Se a release for mais nova que o pacote que você está instalando, avisam e mostram a URL.
+- **`/init-project`**: `_scan.sh capacidades` emite a seção `[VERSAO]` (`instalada`, `ultima_release`, `atualizacao: disponivel|nao|desconhecido`); o comando avisa uma vez, na FASE 0.5, só quando `disponivel`.
+
+O que a verificação **não** faz: não baixa, não atualiza, não roda o instalador. Lê apenas o `tag_name` da release pública (`api.github.com/repos/c3t4r4/Personal-MD-for-Cursor/releases/latest`), sem token, com 5 s de timeout e falha silenciosa; o `_scan.sh` cacheia a resposta por 24 h em `~/.cursor/.scan-cache/update-check.out`. Para desligar: `PERSONAL_MD_NO_UPDATE_CHECK=1`.
+
+Para atualizar: baixe a release, extraia e rode o instalador apontando para a pasta extraída (`./install-init-project.sh ./init-project` ou `install-init-project.cmd .\init-project`). Ele mostra o diff e pergunta arquivo por arquivo.
 
 ### Hook opcional `sessionStart`
 
@@ -115,6 +129,14 @@ Só a partir do dist deste repositório (sem instalar antes):
 PACKAGE_FROM_REPO=1 ./package-init-project.sh
 ```
 
+## Publicar uma release
+
+1. Atualize `dist/init-project/VERSION` (semver) e a seção correspondente em `CHANGELOG.md`.
+2. `git commit -am "release: vX.Y.Z"`.
+3. `git tag vX.Y.Z && git push origin main vX.Y.Z`.
+
+O workflow `.github/workflows/release.yml` recusa a tag se ela não bater com `VERSION`, se faltar a seção no `CHANGELOG.md`, se o `shellcheck` falhar ou se as três listas `FILES` divergirem; passando, empacota `dist/init-project/` e cria a release com as notas do changelog. É essa release que os instaladores e o `/init-project` consultam.
+
 ## Fluxo em máquina nova
 
 1. Copie `dist/init-project/` (ou o pacote gerado em `~/.cursor/initProjectsInstall/dist/init-project/`).
@@ -126,8 +148,9 @@ PACKAGE_FROM_REPO=1 ./package-init-project.sh
 ## Garantias
 
 - Não sobrescreve sem confirmação (ou pula sem TTY).
-- Aborta sem copiar nada se faltar algum dos 18 arquivos.
+- Aborta sem copiar nada se faltar algum dos 19 arquivos.
 - Sem rede obrigatória; installs opcionais (rtk, archify) só se você confirmar.
+- Verificação de atualização só informa; nunca baixa nem atualiza. Desligável com `PERSONAL_MD_NO_UPDATE_CHECK=1`.
 
 ## Governança deste repositório
 
@@ -136,15 +159,16 @@ Este repositório também é governado pelo que distribui. Ordem de leitura para
 Regras que mais pegam quem edita o pacote:
 
 - A tabela de sincronização (12 documentos) existe em quatro cópias idênticas: regra global (tabela + modelo de plano), `AGENTS.md.tpl.md`, `Harness.md.tpl.md` e o modelo de plano de `commands/init-project.md`.
-- A lista dos 18 arquivos existe em três: `install-init-project.sh`, `install-init-project.ps1`, `package-init-project.sh`.
+- A lista dos 19 arquivos existe em três: `install-init-project.sh`, `install-init-project.ps1`, `package-init-project.sh`.
 - Nenhum script imprime conteúdo de `mcp.json`, `hooks.json` ou `.env`.
+- `VERSION` só muda junto com `CHANGELOG.md`, e a tag da release é sempre `v` + `VERSION`.
 
 Verificação local, sem tocar `~/.cursor`:
 
 ```bash
 shellcheck -S warning install-init-project.sh dist/init-project/templates/init-project/_scan.sh dist/init-project/hooks/session-scan.sh
-CURSOR_CONFIG_DIR=/tmp/x ./install-init-project.sh ./dist/init-project
-CURSOR_CONFIG_DIR=/tmp/y pwsh -NoProfile -NonInteractive -File ./install-init-project.ps1 ./dist/init-project
+CURSOR_CONFIG_DIR=/tmp/x PERSONAL_MD_NO_UPDATE_CHECK=1 ./install-init-project.sh ./dist/init-project
+CURSOR_CONFIG_DIR=/tmp/y PERSONAL_MD_NO_UPDATE_CHECK=1 pwsh -NoProfile -NonInteractive -File ./install-init-project.ps1 ./dist/init-project
 diff -r /tmp/x /tmp/y
 ```
 

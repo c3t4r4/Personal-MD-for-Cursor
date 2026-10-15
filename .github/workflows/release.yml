@@ -1,0 +1,96 @@
+# Publica uma GitHub Release do pacote dist/init-project/ a cada tag v<semver>.
+#
+# Fluxo de publicação (manual, pelo mantenedor):
+#   1. editar dist/init-project/VERSION e CHANGELOG.md
+#   2. git commit -am "release: vX.Y.Z"
+#   3. git tag vX.Y.Z && git push origin main vX.Y.Z
+#
+# O workflow recusa a tag se ela não bater com VERSION, se o shellcheck falhar
+# ou se as três listas FILES divergirem (RN-PACOTE-001). Nada aqui instala
+# nada em máquina de ninguém: a release é só o artefato que os instaladores
+# comparam ao avisar "há versão mais nova".
+
+name: release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tag deve bater com dist/init-project/VERSION
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME#v}"
+          ver="$(tr -d '[:space:]' < dist/init-project/VERSION)"
+          echo "tag=${tag} VERSION=${ver}"
+          [[ "${tag}" == "${ver}" ]] || { echo "::error::tag v${tag} != VERSION ${ver}"; exit 1; }
+          grep -q "^## \[${ver}\]" CHANGELOG.md || { echo "::error::CHANGELOG.md sem seção ## [${ver}]"; exit 1; }
+
+      - name: shellcheck
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          shellcheck -S warning install-init-project.sh package-init-project.sh \
+            dist/init-project/templates/init-project/_scan.sh dist/init-project/hooks/session-scan.sh
+
+      - name: Paridade das listas FILES (.sh, .ps1, package)
+        run: |
+          set -euo pipefail
+          extrair_sh()  { sed -n '/^FILES=(/,/^)/p' "$1" | grep -o '"[^"]*"' | tr -d '"'; }
+          extrair_ps1() { sed -n '/^\$Files = @(/,/^)/p' "$1" | grep -o "'[^']*'" | tr -d "'"; }
+          diff <(extrair_sh install-init-project.sh) <(extrair_sh package-init-project.sh)
+          diff <(extrair_sh install-init-project.sh) <(extrair_ps1 install-init-project.ps1)
+          while IFS= read -r f; do
+            [[ -f "dist/init-project/${f}" ]] || { echo "::error::ausente no pacote: ${f}"; exit 1; }
+          done < <(extrair_sh install-init-project.sh)
+          echo "OK: $(extrair_sh install-init-project.sh | wc -l) arquivos, três listas idênticas."
+
+      - name: Empacotar
+        run: |
+          set -euo pipefail
+          ver="$(tr -d '[:space:]' < dist/init-project/VERSION)"
+          mkdir -p out
+          tar -C dist -czf "out/init-project-${ver}.tar.gz" init-project
+          (cd dist && zip -qr "../out/init-project-${ver}.zip" init-project)
+          cp install-init-project.sh install-init-project.ps1 install-init-project.cmd out/
+          (cd out && sha256sum ./* > SHA256SUMS.txt)
+          ls -l out
+
+      - name: Notas da release a partir do CHANGELOG.md
+        run: |
+          set -euo pipefail
+          ver="$(tr -d '[:space:]' < dist/init-project/VERSION)"
+          awk -v v="${ver}" '
+            $0 ~ "^## \\[" v "\\]" { on=1; next }
+            on && /^## \[/ { exit }
+            on { print }
+          ' CHANGELOG.md > out/NOTES.md
+          {
+            echo
+            echo "## Instalação"
+            echo
+            echo "Extraia \`init-project-${ver}.tar.gz\` (ou \`.zip\`) e rode \`./install-init-project.sh ./init-project\` (macOS/Linux) ou \`install-init-project.cmd .\\init-project\` (Windows). Nada é instalado sem confirmação no terminal."
+          } >> out/NOTES.md
+
+      - name: Criar release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ver="$(tr -d '[:space:]' < dist/init-project/VERSION)"
+          gh release create "v${ver}" \
+            --title "v${ver}" \
+            --notes-file out/NOTES.md \
+            "out/init-project-${ver}.tar.gz" \
+            "out/init-project-${ver}.zip" \
+            out/install-init-project.sh out/install-init-project.ps1 out/install-init-project.cmd \
+            out/SHA256SUMS.txt
