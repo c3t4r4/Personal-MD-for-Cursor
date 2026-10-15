@@ -14,7 +14,7 @@ O Windows ainda abre `powershell.exe` na versão 5.1. Esse host lê um `.ps1` se
 
 ### Testar os instaladores sem tocar `~/.cursor`
 
-Os dois instaladores e o hook honram `CURSOR_CONFIG_DIR`. Teste padrão: `CURSOR_CONFIG_DIR=/tmp/x ./install-init-project.sh ./dist/init-project` e `CURSOR_CONFIG_DIR=/tmp/y pwsh -NoProfile -NonInteractive -File ./install-init-project.ps1 ./dist/init-project`, depois `diff -r /tmp/x /tmp/y`. Segunda rodada deve dar 21 `[pulado, sem TTY]`. Cenário de falha: remover um dos 19 arquivos do pacote → exit 1 e zero arquivos copiados.
+Os dois instaladores e o hook honram `CURSOR_CONFIG_DIR`. Teste padrão: `CURSOR_CONFIG_DIR=/tmp/x ./install-init-project.sh ./dist/init-project` e `CURSOR_CONFIG_DIR=/tmp/y pwsh -NoProfile -NonInteractive -File ./install-init-project.ps1 ./dist/init-project`, depois `diff -r /tmp/x /tmp/y`. Segunda rodada deve dar 24 `[pulado, sem TTY]` (20 obrigatórios + 4 opcionais). Cenário de falha: remover um dos 20 arquivos do pacote → exit 1 e zero arquivos copiados. No Windows, testar o instalador com `OS=Windows_NT` só num `CURSOR_CONFIG_DIR` temporário: ele reescreve `session-scan.sh` → `session-scan.cmd` em `hooks.json` e não imprime o arquivo.
 
 ### `pwsh` no macOS não roda dentro do sandbox do Cursor
 
@@ -56,6 +56,14 @@ Os `docs/*` e o `AGENTS.md` iniciais vieram do repositório `Personal-MD-for-Cla
 
 `GET /repos/<owner>/<repo>/releases/latest` responde 404 enquanto não há release publicada (não é erro de rede) e tem limite anônimo de 60 requisições/hora por IP — por isso o cache de 24 h no `_scan.sh` e a falha silenciosa nos três lugares. O `sed` que extrai `tag_name` foi validado contra a resposta real de outro repositório (`rtk-ai/rtk`). Em PowerShell 5.1, forçar TLS 1.2 (`[Net.ServicePointManager]::SecurityProtocol`) antes do `Invoke-RestMethod`, senão a chamada falha em máquinas antigas.
 
+### Release não é CI
+
+O primeiro desenho publicava no push da tag `v*`, via GitHub Actions. O mantenedor pediu o contrário: um script explícito. `./release.sh` valida, pede `s` em `/dev/tty` e só então faz `git push`, `git tag -a` e `gh release create --verify-tag` (a flag exige a tag já no remoto, então o push da tag vem antes). `--dry-run` para na mesma barreira da execução real, inclusive árvore suja. No macOS o hash é `shasum -a 256`; `sha256sum` entra se existir. Sem `gh` autenticado o script não chega a publicar.
+
+### Windows não executa `_scan.sh`
+
+Chamar o `.sh` no hook ou no `/init-project` falha em toda sessão, porque o Windows não associa essa extensão ao Git Bash e o `bash.exe` de `System32` é o do WSL. A entrada é `scan.cmd` / `session-scan.cmd`: eles localizam `Git\bin\bash.exe` e delegam, herdando o stdin no caso do hook. Sem Git Bash, saem 0. O `.ps1` só entra nesse modo quando `$env:OS` é `Windows_NT` — no pwsh do macOS essa variável não existe, e o teste ponta a ponta continua chamando o `.sh`.
+
 ### Limites do archify
 
 `meta.views[].note` aceita no máximo 140 caracteres e `sublabel` de nó cabe em ~84 px; textos mais longos falham na validação (`schema/maxLength`) antes de renderizar. Encurtar em vez de quebrar linha.
@@ -68,3 +76,5 @@ Os `docs/*` e o `AGENTS.md` iniciais vieram do repositório `Personal-MD-for-Cla
 | 2026-10-15 | Reescrito para o Cursor: BOM mantido, `CURSOR_CONFIG_DIR` para testes, sandbox × `pwsh`, shell persistente, `sed`/`perl`, comparação de tabelas, arquivos reais do Cursor, `rtk init`, hook absoluto, origem dos docs. |
 | 2026-10-15 | ExecutionPolicy e `.cmd` (CRLF, sem acentos, `pwsh` → `powershell`). |
 | 2026-10-15 | Semver sem `sort -V`, API de releases sem token (404 sem release, 60 req/h, TLS 1.2 no PS 5.1), limites do archify; teste e2e passa a esperar 21 `[pulado, sem TTY]`. |
+| 2026-10-15 | Release manual: `release.sh`, `--verify-tag` depois do push da tag, `shasum` no macOS. O workflow em `.github/` foi removido. |
+| 2026-10-15 | Entrada Windows `scan.cmd` / `session-scan.cmd`. `$env:OS` distingue o teste do `.ps1` no macOS. Segunda rodada do e2e passa a 24 pulados. |

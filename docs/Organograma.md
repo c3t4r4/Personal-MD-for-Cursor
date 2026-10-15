@@ -9,7 +9,7 @@ flowchart TD
     subgraph origem["Máquina de origem"]
         CURSOR_SRC["~/.cursor (customizado)"]
         PKG["package-init-project.sh"]
-        DIST["dist/init-project/<br/>19 arquivos + 2 opcionais"]
+        DIST["dist/init-project/<br/>20 arquivos + 4 opcionais"]
         CURSOR_SRC -->|lê| PKG
         PKG -->|publica| DIST
     end
@@ -27,7 +27,7 @@ flowchart TD
     DEST --> RULE["rules/personal-md-global.mdc"]
     DEST --> CMD["commands/init-project.md"]
     DEST --> TPL["templates/init-project/*"]
-    DEST --> HOOK["hooks/session-scan.sh<br/>+ hooks.json.snippet"]
+    DEST --> HOOK["hooks/session-scan.sh<br/>+ session-scan.cmd no Windows"]
 
     RULE -.->|referencia| RTK["~/.cursor/RTK.md"]
     CMD -->|usa| TPL
@@ -39,7 +39,7 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    A["Resolver pasta do pacote<br/>arg → ./dist → destino/initProjectsInstall"] --> B{"19 arquivos<br/>presentes?"}
+    A["Resolver pasta do pacote<br/>arg → ./dist → destino/initProjectsInstall"] --> B{"20 arquivos<br/>presentes?"}
     B -->|não| X["Listar ausentes<br/>exit 1, nada copiado"]
     B -->|sim| C["Para cada arquivo"]
     C --> D{"Existe no destino?"}
@@ -59,8 +59,8 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    V["dist/init-project/VERSION<br/>+ CHANGELOG.md"] -->|"git tag v&lt;VERSION&gt; + push"| W["GitHub Actions<br/>release.yml"]
-    W -->|"valida: tag = VERSION, changelog,<br/>shellcheck, paridade FILES"| R["GitHub Release<br/>tar.gz, zip, instaladores, SHA256SUMS"]
+    V["dist/init-project/VERSION<br/>+ CHANGELOG.md, commit em main"] -->|"mantenedor roda"| W["./release.sh<br/>valida e pede s"]
+    W -->|"s: tag, push, gh release"| R["GitHub Release<br/>tar.gz, zip, instaladores, SHA256SUMS"]
     R --> API["api.github.com/.../releases/latest<br/>(tag_name)"]
     API -.->|"5 s, anônimo, silencioso"| INST["install-init-project.sh / .ps1<br/>-- Versão do pacote --"]
     API -.->|"cache 24 h"| SCAN["_scan.sh capacidades<br/>[VERSAO]"]
@@ -69,7 +69,7 @@ flowchart LR
     CMD0 --> AV
 ```
 
-`PERSONAL_MD_NO_UPDATE_CHECK=1` corta as duas linhas pontilhadas. Atualizar continua sendo rodar o instalador com a pasta da release extraída.
+`PERSONAL_MD_NO_UPDATE_CHECK=1` corta as duas linhas pontilhadas. Sem a resposta `s`, ou com `--dry-run`, o script para antes da release. Atualizar continua sendo rodar o instalador com a pasta da release extraída. Push não entra nesse diagrama: não publica.
 
 ## Como o pacote governa um projeto
 
@@ -84,7 +84,7 @@ flowchart TD
     S --> H["Harness: Planner → Coder →<br/>Validator / Tester / Security"]
 ```
 
-Os instaladores não decidem o que o `/init-project` faz: eles só colocam a regra, o comando, os templates e o hook no lugar certo. O `.cmd` não decide o que copiar — só inicia o PowerShell. O `.ps1` não substitui o `_scan.sh`; no Windows a varredura depende de Git Bash ou WSL.
+Os instaladores não decidem o que o `/init-project` faz: eles só colocam a regra, o comando, os templates e o hook no lugar certo. `install-init-project.cmd` não decide o que copiar — só inicia o PowerShell. No Windows, `scan.cmd` é quem chama o `_scan.sh`, depois de achar o Git Bash; o `.ps1` aponta o hook para `session-scan.cmd`.
 
 ## Histórico
 
@@ -94,3 +94,5 @@ Os instaladores não decidem o que o `/init-project` faz: eles só colocam a reg
 | 2026-10-15 | Reescrito em Mermaid para o Cursor: destino `~/.cursor`/`CURSOR_CONFIG_DIR`, sem `.cmd`, diagrama interno do instalador e diagrama de governança. |
 | 2026-10-15 | Ramo Windows ganha o lançador `install-init-project.cmd` → `.ps1`. |
 | 2026-10-15 | 19 arquivos; relatório do instalador inclui versão do pacote; novo diagrama "Versão, release e aviso de atualização". |
+| 2026-10-15 | O diagrama de release troca GitHub Actions por `./release.sh` com confirmação `s`. |
+| 2026-10-15 | 20 arquivos e 4 opcionais; hook Windows em `session-scan.cmd`. |

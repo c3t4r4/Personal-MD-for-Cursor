@@ -34,6 +34,7 @@ FILES=(
   "rules/personal-md-global.mdc"
   "commands/init-project.md"
   "templates/init-project/_scan.sh"
+  "templates/init-project/scan.cmd"
   "templates/init-project/_capacidades.md"
   "templates/init-project/_checklist-entrevista.md"
   "templates/init-project/_varredura-regras.md"
@@ -53,7 +54,9 @@ FILES=(
 
 OPTIONAL_FILES=(
   "hooks/session-scan.sh"
+  "hooks/session-scan.cmd"
   "hooks.json.snippet"
+  "hooks.json.windows.snippet"
 )
 
 if [[ -n "${1:-}" ]]; then
@@ -221,7 +224,12 @@ case "$(uname -s)" in
 esac
 
 echo "-- Skills e agentes --"
-if [[ -x "${SCAN_SH}" ]]; then
+SCAN_CMD="${CURSOR_HOME}/templates/init-project/scan.cmd"
+if [[ "${OS_KIND}" == "windows" && -f "${SCAN_CMD}" ]]; then
+  # No Windows o .sh não é o comando: scan.cmd acha o Git Bash e delega.
+  echo "ok: rodando scan.cmd capacidades"
+  cmd //c "${SCAN_CMD}" capacidades || echo "AVISO: scan.cmd falhou" >&2
+elif [[ -x "${SCAN_SH}" ]]; then
   "${SCAN_SH}" capacidades
 else
   echo "AVISO: ${SCAN_SH} não encontrado ou não executável — não foi possível checar skills/agentes." >&2
@@ -302,6 +310,12 @@ else
 fi
 
 HOOKS_JSON="${CURSOR_HOME}/hooks.json"
+if [[ "${OS_KIND}" == "windows" && -f "${HOOKS_JSON}" ]] && grep -q 'session-scan\.sh' "${HOOKS_JSON}"; then
+  HOOKS_BAK="${HOOKS_JSON}.bak-$(date +%Y-%m-%d)"
+  [[ -f "${HOOKS_BAK}" ]] || cp -p "${HOOKS_JSON}" "${HOOKS_BAK}"
+  sed -i 's/session-scan\.sh/session-scan.cmd/g' "${HOOKS_JSON}"
+  echo "ok: hooks.json passou a chamar session-scan.cmd (backup ao lado; conteúdo não impresso)"
+fi
 if [[ -f "${HOOKS_JSON}" ]]; then
   if grep -q "session-scan\|sessionStart\|_scan.sh sessao" "${HOOKS_JSON}" 2>/dev/null; then
     echo "ok: hook de sessão / scan encontrado em hooks.json"

@@ -10,7 +10,7 @@
         "id": "copia",
         "label": "Pacote até o perfil",
         "focus": ["empacotar", "levar", "validar", "politica", "resumo"],
-        "note": "Os 19 arquivos só seguem depois que a pasta do pacote está completa. Destino: CURSOR_CONFIG_DIR ou ~/.cursor."
+        "note": "Os 20 arquivos só seguem depois que a pasta do pacote está completa. Destino: CURSOR_CONFIG_DIR ou ~/.cursor."
       },
       {
         "id": "excecoes",
@@ -43,7 +43,7 @@
   "nodes": [
     { "id": "empacotar", "lane": "fluxo", "col": 0, "type": "backend", "label": "Empacotar", "sublabel": "package-init-project.sh" },
     { "id": "levar", "lane": "fluxo", "col": 1, "type": "external", "label": "Levar pasta", "sublabel": "dist/init-project" },
-    { "id": "validar", "lane": "fluxo", "col": 2, "type": "security", "label": "Validar", "sublabel": "19 arquivos", "tag": "antes da cópia" },
+    { "id": "validar", "lane": "fluxo", "col": 2, "type": "security", "label": "Validar", "sublabel": "20 arquivos", "tag": "antes da cópia" },
     { "id": "politica", "lane": "fluxo", "col": 3, "type": "backend", "label": "Copiar", "sublabel": "novo ou s/N/d" },
     { "id": "resumo", "lane": "fluxo", "col": 4, "type": "frontend", "label": "Resumo", "sublabel": "contagens" },
     { "id": "verificar", "lane": "fluxo", "col": 5, "type": "cloud", "label": "Verificar", "sublabel": "scan, RTK, archify", "tag": "não bloqueia" },
@@ -65,7 +65,7 @@
       "dot": "emerald",
       "title": "Cópia protegida",
       "items": [
-        "Nada é instalado se faltar um dos 19 arquivos",
+        "Nada é instalado se faltar um dos 20 arquivos",
         "Arquivo novo entra sem pergunta, bytes preservados",
         "Arquivo existente só muda com a resposta s"
       ]

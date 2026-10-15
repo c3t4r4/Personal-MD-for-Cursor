@@ -22,20 +22,21 @@ O pacote instalável é `dist/init-project/`.
 
 Projeto que ainda tenha só `./CLAUDE.md` continua legível. O `/init-project` propõe renomear esse arquivo para `./AGENTS.md` e não apaga nada sem confirmação.
 
-## Os 19 arquivos obrigatórios
+## Os 20 arquivos obrigatórios
 
 | Arquivo | Papel |
 | --- | --- |
 | `VERSION` | Versão semver do pacote; instalada em `~/.cursor/VERSION` e comparada à última release do GitHub |
 | `rules/personal-md-global.mdc` | Governança global (sempre aplicada no Agent) |
 | `commands/init-project.md` | Comando `/init-project` (9 fases, modos `--check`/`--update`/`--rag`/`--regras`) |
-| `templates/init-project/_scan.sh` | Varredura de capacidades e projeto (único executável obrigatório) |
+| `templates/init-project/_scan.sh` | Varredura de capacidades e projeto (única implementação; macOS/Linux) |
+| `templates/init-project/scan.cmd` | Entrada da mesma varredura no Windows. Acha o Git Bash e chama o `_scan.sh` |
 | `templates/init-project/_capacidades.md` | Fallback/instalação quando falta MCP, skill ou agente |
 | `templates/init-project/_checklist-entrevista.md` | Cobertura da entrevista |
 | `templates/init-project/_varredura-regras.md` | Procedimento do modo `--regras` |
 | `templates/init-project/*.md.tpl.md` (12) | Templates de `AGENTS.md` e dos 11 `docs/*` |
 
-Opcionais no pacote: `hooks/session-scan.sh` e `hooks.json.snippet` (hook `sessionStart`).
+Opcionais no pacote: `hooks/session-scan.sh`, `hooks/session-scan.cmd`, `hooks.json.snippet` (macOS/Linux) e `hooks.json.windows.snippet` (hook `sessionStart`).
 
 `README.md` do projeto governado não tem template: é o 12.º documento da tabela de sincronização obrigatória (nunca `n/a`) e, quando ausente, é criado com a estrutura mínima descrita na regra global.
 
@@ -72,13 +73,14 @@ Equivalente manual: `powershell -ExecutionPolicy Bypass -File .\install-init-pro
 Ressalvas no Windows:
 
 - O `.ps1` é compatível com Windows PowerShell 5.1 e PowerShell 7+, gravado em UTF-8 com BOM (o 5.1 lê sem BOM como ANSI e quebra os acentos) e com CRLF no checkout via `.gitattributes`.
-- `_scan.sh` e `hooks/session-scan.sh` são bash. O instalador procura `bash.exe` (Git for Windows) e, se existir, roda a verificação de capacidades por ele; sem Git Bash, o `/init-project` continua funcionando, mas sem a varredura automática.
+- A varredura não chama `_scan.sh` direto. O instalador roda `scan.cmd`, e o hook fica em `session-scan.cmd`. Os dois procuram o `bash.exe` do Git for Windows e só então delegam ao `.sh`. Sem Git Bash, o cmd avisa (ou imprime `{}` no hook) e sai 0: a sessão não fica falhando, e o `/init-project` segue sem a varredura automática.
+- Se `hooks.json` ainda tiver `session-scan.sh`, o instalador troca só essa string por `session-scan.cmd` e deixa um backup `hooks.json.bak-<data>`. O conteúdo do arquivo não é impresso.
 - O hook `sessionStart` depende de `bash.exe` acessível pelo Cursor — não verificado neste pacote.
 - Em WSL, o `$HOME` é o do Linux; para apontar ao perfil do Windows, exportar `CURSOR_CONFIG_DIR=/mnt/c/Users/<usuario>/.cursor`.
 
 ### O que os instaladores fazem
 
-1. Conferem os 19 arquivos.
+1. Conferem os 20 arquivos.
 2. Copiam para a pasta do Cursor (rules, commands, templates, hooks), arquivo a arquivo. O destino é `~/.cursor` (`%USERPROFILE%\.cursor` no Windows); a variável `CURSOR_CONFIG_DIR` sobrepõe isso nos dois instaladores.
 3. Se o destino já existe: perguntam `[s/N/d=ver diff]` — nunca sobrescrevem em silêncio.
 4. Sem terminal interativo: pulam existentes.
@@ -101,7 +103,7 @@ Para atualizar: baixe a release, extraia e rode o instalador apontando para a pa
 
 ### Hook opcional `sessionStart`
 
-O instalador copia `hooks/session-scan.sh` e `hooks.json.snippet` se presentes. Para ativar:
+O instalador copia os dois wrappers e os dois snippets, se presentes. No macOS/Linux o comando é `session-scan.sh`. No Windows o instalador usa `session-scan.cmd` e, quando `hooks.json` já existe apontando para o `.sh`, faz a troca. Para ativar num perfil ainda sem hook:
 
 1. Se ainda não existe `~/.cursor/hooks.json`, copie o snippet:
 
@@ -109,9 +111,11 @@ O instalador copia `hooks/session-scan.sh` e `hooks.json.snippet` se presentes. 
 cp ~/.cursor/hooks.json.snippet ~/.cursor/hooks.json
 ```
 
-2. Se já existe `hooks.json`, mescle o bloco `sessionStart` do snippet manualmente (não sobrescreva hooks existentes).
+No Windows, o arquivo é `hooks.json.windows.snippet` (`session-scan.cmd`).
 
-O wrapper chama `_scan.sh sessao` e devolve um `followup_message` com o resumo do projeto, sem bloquear a sessão.
+2. Se já existe `hooks.json`, mescle o bloco `sessionStart` do snippet do seu sistema (não sobrescreva hooks existentes). No Windows, se o comando ainda for `session-scan.sh`, rode o instalador de novo: ele troca só essa string.
+
+O wrapper chama a varredura `sessao` e devolve um `followup_message` com o resumo do projeto, sem bloquear a sessão.
 
 ## Empacotar (máquina de origem)
 
@@ -131,11 +135,13 @@ PACKAGE_FROM_REPO=1 ./package-init-project.sh
 
 ## Publicar uma release
 
-1. Atualize `dist/init-project/VERSION` (semver) e a seção correspondente em `CHANGELOG.md`.
-2. `git commit -am "release: vX.Y.Z"`.
-3. `git tag vX.Y.Z && git push origin main vX.Y.Z`.
+Não há workflow. Push de commit ou de tag não cria release. Quem publica roda o script, num terminal, e confirma com `s`:
 
-O workflow `.github/workflows/release.yml` recusa a tag se ela não bater com `VERSION`, se faltar a seção no `CHANGELOG.md`, se o `shellcheck` falhar ou se as três listas `FILES` divergirem; passando, empacota `dist/init-project/` e cria a release com as notas do changelog. É essa release que os instaladores e o `/init-project` consultam.
+1. Atualize `dist/init-project/VERSION` (semver `X.Y.Z`) e a seção `## [X.Y.Z]` em `CHANGELOG.md`.
+2. Commit em `main`, com a árvore limpa.
+3. `./release.sh` — ou `./release.sh --dry-run` para só validar.
+
+O script recusa branch diferente de `main`, árvore suja, `shellcheck` falho, listas `FILES` divergentes, tag ou release já existente, e `main` atrás do `origin`. Sem terminal, também recusa. Confirmado, envia `main` se ainda houver commits locais, cria a tag anotada `vX.Y.Z`, envia a tag e publica `init-project-X.Y.Z.tar.gz`, `.zip`, os três instaladores e `SHA256SUMS.txt`, com as notas da seção do changelog. É essa release que os instaladores e o `/init-project` consultam.
 
 ## Fluxo em máquina nova
 
@@ -148,7 +154,7 @@ O workflow `.github/workflows/release.yml` recusa a tag se ela não bater com `V
 ## Garantias
 
 - Não sobrescreve sem confirmação (ou pula sem TTY).
-- Aborta sem copiar nada se faltar algum dos 19 arquivos.
+- Aborta sem copiar nada se faltar algum dos 20 arquivos.
 - Sem rede obrigatória; installs opcionais (rtk, archify) só se você confirmar.
 - Verificação de atualização só informa; nunca baixa nem atualiza. Desligável com `PERSONAL_MD_NO_UPDATE_CHECK=1`.
 
@@ -159,14 +165,14 @@ Este repositório também é governado pelo que distribui. Ordem de leitura para
 Regras que mais pegam quem edita o pacote:
 
 - A tabela de sincronização (12 documentos) existe em quatro cópias idênticas: regra global (tabela + modelo de plano), `AGENTS.md.tpl.md`, `Harness.md.tpl.md` e o modelo de plano de `commands/init-project.md`.
-- A lista dos 19 arquivos existe em três: `install-init-project.sh`, `install-init-project.ps1`, `package-init-project.sh`.
+- A lista dos 20 arquivos existe em três: `install-init-project.sh`, `install-init-project.ps1`, `package-init-project.sh`.
 - Nenhum script imprime conteúdo de `mcp.json`, `hooks.json` ou `.env`.
-- `VERSION` só muda junto com `CHANGELOG.md`, e a tag da release é sempre `v` + `VERSION`.
+- `VERSION` só muda junto com `CHANGELOG.md`. A tag `v` + `VERSION` só nasce quando alguém roda `./release.sh` e responde `s`.
 
 Verificação local, sem tocar `~/.cursor`:
 
 ```bash
-shellcheck -S warning install-init-project.sh dist/init-project/templates/init-project/_scan.sh dist/init-project/hooks/session-scan.sh
+shellcheck -S warning install-init-project.sh package-init-project.sh release.sh dist/init-project/templates/init-project/_scan.sh dist/init-project/hooks/session-scan.sh
 CURSOR_CONFIG_DIR=/tmp/x PERSONAL_MD_NO_UPDATE_CHECK=1 ./install-init-project.sh ./dist/init-project
 CURSOR_CONFIG_DIR=/tmp/y PERSONAL_MD_NO_UPDATE_CHECK=1 pwsh -NoProfile -NonInteractive -File ./install-init-project.ps1 ./dist/init-project
 diff -r /tmp/x /tmp/y

@@ -23,8 +23,10 @@
 .NOTES
   Compatível com Windows PowerShell 5.1 e PowerShell 7+. Evita recursos
   exclusivos do 7 (sem ??, sem ternário, sem -Parallel).
-  _scan.sh e hooks\session-scan.sh são bash: no Windows rodam via Git Bash
-  (bash.exe do Git for Windows) ou WSL. O instalador só copia e avisa.
+  No Windows a varredura entra por scan.cmd e o hook por session-scan.cmd.
+  Os dois acham o Git Bash e só então delegam ao .sh. O instalador não chama
+  _scan.sh direto e, se hooks.json apontar para session-scan.sh, troca essa
+  referência. Sem Git Bash, o cmd sai 0 e a varredura degrada.
 #>
 [CmdletBinding()]
 param(
@@ -53,6 +55,7 @@ $Files = @(
   'rules/personal-md-global.mdc',
   'commands/init-project.md',
   'templates/init-project/_scan.sh',
+  'templates/init-project/scan.cmd',
   'templates/init-project/_capacidades.md',
   'templates/init-project/_checklist-entrevista.md',
   'templates/init-project/_varredura-regras.md',
@@ -72,7 +75,9 @@ $Files = @(
 
 $OptionalFiles = @(
   'hooks/session-scan.sh',
-  'hooks.json.snippet'
+  'hooks/session-scan.cmd',
+  'hooks.json.snippet',
+  'hooks.json.windows.snippet'
 )
 
 if ($PackageDir) {
@@ -266,34 +271,28 @@ function Read-YesNo {
 
 Write-Host '-- Skills e agentes --'
 $ScanSh = Join-Rel $CursorHome 'templates/init-project/_scan.sh'
-# Prefere o bash do Git for Windows: o bash.exe de System32 é o do WSL e não
-# enxerga caminhos do Windows sem conversão.
-$bash = $null
-foreach ($root in @($env:ProgramFiles, ${env:ProgramFiles(x86)}, $env:LOCALAPPDATA)) {
-  if (-not $root) { continue }
-  foreach ($sub in @('Git\bin\bash.exe', 'Programs\Git\bin\bash.exe')) {
-    $candidate = Join-Path $root $sub
-    if (Test-Path -LiteralPath $candidate -PathType Leaf) {
-      $bash = Get-Command $candidate
-      break
+$ScanCmd = Join-Rel $CursorHome 'templates/init-project/scan.cmd'
+# $env:OS é Windows_NT no Windows (PowerShell 5.1 inclusive) e não existe no pwsh do macOS/Linux.
+if ($env:OS -eq 'Windows_NT') {
+  if (Test-Path -LiteralPath $ScanCmd -PathType Leaf) {
+    Write-Host 'ok: rodando scan.cmd capacidades'
+    try {
+      & $ScanCmd capacidades
+    } catch {
+      Write-Host 'AVISO: scan.cmd falhou. Instale o Git for Windows se a mensagem acima não bastar.' -ForegroundColor Yellow
     }
+  } else {
+    Write-Host "AVISO: $ScanCmd não encontrado — não foi possível checar skills/agentes." -ForegroundColor Yellow
   }
-  if ($bash) { break }
-}
-if (-not $bash) { $bash = Get-Command bash -ErrorAction SilentlyContinue }
-if ($bash -and (Test-Path -LiteralPath $ScanSh -PathType Leaf)) {
-  Write-Host ("ok: bash encontrado ({0}); rodando _scan.sh capacidades" -f $bash.Source)
-  try {
-    & $bash.Source $ScanSh capacidades
-  } catch {
-    Write-Host "AVISO: _scan.sh falhou via bash: $($_.Exception.Message)" -ForegroundColor Yellow
+} elseif (Test-Path -LiteralPath $ScanSh -PathType Leaf) {
+  # Este ramo só existe para rodar o .ps1 fora do Windows (teste). No Windows não chega aqui.
+  $bash = Get-Command bash -ErrorAction SilentlyContinue
+  if ($bash) {
+    Write-Host ("ok: fora do Windows, bash em {0}; rodando _scan.sh capacidades" -f $bash.Source)
+    try { & $bash.Source $ScanSh capacidades } catch { Write-Host 'AVISO: _scan.sh falhou via bash' -ForegroundColor Yellow }
+  } else {
+    Write-Host 'ausente: bash não encontrado.' -ForegroundColor Yellow
   }
-} elseif (-not $bash) {
-  Write-Host 'ausente: bash.exe não encontrado no PATH.' -ForegroundColor Yellow
-  Write-Host '  _scan.sh (varredura de capacidades/projeto) e hooks\session-scan.sh são bash.'
-  Write-Host '  Instale o Git for Windows (traz bash.exe) ou use o WSL com CURSOR_CONFIG_DIR apontando para o perfil do Windows,'
-  Write-Host '  por exemplo: export CURSOR_CONFIG_DIR=/mnt/c/Users/<usuario>/.cursor'
-  Write-Host '  Sem bash, o /init-project continua funcionando, mas sem a varredura automática.'
 } else {
   Write-Host "AVISO: $ScanSh não encontrado — não foi possível checar skills/agentes." -ForegroundColor Yellow
 }
@@ -349,7 +348,23 @@ if (Test-Path -LiteralPath $archifySkill -PathType Leaf) {
 Write-Host ''
 Write-Host '-- Hook sessionStart --'
 $HooksJson = Join-Path $CursorHome 'hooks.json'
-$Snippet = Join-Path $CursorHome 'hooks.json.snippet'
+if ($env:OS -eq 'Windows_NT') {
+  $Snippet = Join-Path $CursorHome 'hooks.json.windows.snippet'
+} else {
+  $Snippet = Join-Path $CursorHome 'hooks.json.snippet'
+}
+if ($env:OS -eq 'Windows_NT' -and (Test-Path -LiteralPath $HooksJson -PathType Leaf)) {
+  $hookRaw = Get-Content -LiteralPath $HooksJson -Raw -ErrorAction SilentlyContinue
+  if ($hookRaw -and ($hookRaw -match 'session-scan\.sh')) {
+    $hookBak = "$HooksJson.bak-$(Get-Date -Format yyyy-MM-dd)"
+    if (-not (Test-Path -LiteralPath $hookBak)) {
+      Copy-Item -LiteralPath $HooksJson -Destination $hookBak
+    }
+    $utf8 = New-Object System.Text.UTF8Encoding $false
+    [System.IO.File]::WriteAllText($HooksJson, ($hookRaw -replace 'session-scan\.sh', 'session-scan.cmd'), $utf8)
+    Write-Host 'ok: hooks.json passou a chamar session-scan.cmd (backup ao lado; conteúdo não impresso)'
+  }
+}
 if (Test-Path -LiteralPath $HooksJson -PathType Leaf) {
   # Só procura a assinatura do hook; nunca imprime o conteúdo do arquivo.
   if (Select-String -LiteralPath $HooksJson -Pattern 'session-scan|sessionStart|_scan\.sh sessao' -Quiet) {
@@ -366,7 +381,7 @@ if (Test-Path -LiteralPath $HooksJson -PathType Leaf) {
     Write-Host "  Fragmento disponível em $Snippet"
   }
 }
-Write-Host '  No Windows o hook depende de bash.exe acessível pelo Cursor — não verificado por este instalador.'
+Write-Host '  No Windows o comando do hook é session-scan.cmd. Sem Git Bash ele imprime {} e sai 0.'
 
 Write-Host ''
 Write-Host '-- Versão do pacote --'

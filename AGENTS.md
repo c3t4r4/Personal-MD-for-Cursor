@@ -46,11 +46,11 @@ Este repositório **é a fonte** do pacote que outros projetos instalam. Toda ed
 
 - `dist/init-project/` é o artefato. Editar os arquivos ali e, quando o ambiente local for a referência, regenerar com `./package-init-project.sh`.
 - A tabela de gatilhos da sincronização (12 linhas) vive em **quatro cópias** que devem ser idênticas palavra por palavra: `rules/personal-md-global.mdc` (tabela + modelo de plano), `templates/init-project/AGENTS.md.tpl.md`, `templates/init-project/Harness.md.tpl.md` e o modelo de plano em `commands/init-project.md`. Alterou uma, propaga às outras na mesma tarefa.
-- A lista `FILES` (19 arquivos) existe em três lugares e deve ser idêntica: `install-init-project.sh`, `install-init-project.ps1`, `package-init-project.sh`.
+- A lista `FILES` (20 arquivos) existe em três lugares e deve ser idêntica: `install-init-project.sh`, `install-init-project.ps1`, `package-init-project.sh`. No Windows a varredura entra por `scan.cmd`; o instalador troca `session-scan.sh` por `session-scan.cmd` no `hooks.json` e não chama o `.sh` direto.
 - Nenhum script imprime conteúdo de `mcp.json`, `hooks.json` ou `.env`. `_scan.sh capacidades` lista só **nomes** de servidores MCP.
 - Nenhum instalador instala nada sem confirmação explícita num terminal interativo. Sem TTY, apenas informa o comando manual (rtk e archify, nos dois instaladores).
 - `install-init-project.cmd` é só lançador do `.ps1`: nunca duplicar lógica de cópia nele.
-- `dist/init-project/VERSION` (semver) só muda junto com `CHANGELOG.md`; a release é a tag `v<VERSION>` em `main`, criada pelo workflow `.github/workflows/release.yml`. A verificação de atualização (instaladores e `_scan.sh capacidades`, seção `[VERSAO]`) só informa — nunca baixa nem atualiza; opt-out `PERSONAL_MD_NO_UPDATE_CHECK=1`.
+- `dist/init-project/VERSION` (semver) só muda junto com `CHANGELOG.md`; a release é a tag `v<VERSION>` em `main`, criada por `./release.sh` com confirmação `s`. Push não publica. A verificação de atualização (instaladores e `_scan.sh capacidades`, seção `[VERSAO]`) só informa — nunca baixa nem atualiza; opt-out `PERSONAL_MD_NO_UPDATE_CHECK=1`.
 - Mensagens ao usuário em português; texto dos templates em português.
 - Scripts bash: `set -uo pipefail` (sem `-e` no instalador, de propósito), `shellcheck -S warning` limpo. PowerShell: compatível com Windows PowerShell 5.1 (sem `??`, ternário ou `-Parallel`), UTF-8 **com BOM**, CRLF no checkout Windows via `.gitattributes`.
 
@@ -64,7 +64,7 @@ Este repositório **é a fonte** do pacote que outros projetos instalam. Toda ed
 - Autenticação: nenhuma.
 - API própria: não.
 - APIs externas: uma consulta opcional e anônima a `api.github.com/repos/c3t4r4/Personal-MD-for-Cursor/releases/latest` (só `tag_name`, 5 s de timeout, falha silenciosa, cache de 24 h no `_scan.sh`, opt-out `PERSONAL_MD_NO_UPDATE_CHECK=1`). Fora isso, os instaladores apenas sugerem `brew`/`curl`/`winget` (rtk) e `npx skills add` (archify), sempre após confirmação.
-- CI: GitHub Actions apenas para publicar releases em tag `v*` (`.github/workflows/release.yml`); nenhum deploy.
+- CI: nenhum. A release sai de `./release.sh` sob confirmação; nenhum workflow dispara no push. Nenhum deploy.
 - Docker: nenhum.
 - Testes: sem suíte automatizada. Validação por `bash -n`, `shellcheck`, parse do `.ps1` via `[System.Management.Automation.Language.Parser]::ParseFile`, execução ponta a ponta dos dois instaladores com `CURSOR_CONFIG_DIR` apontando para pasta temporária e comparação `diff -r` das árvores geradas.
 
@@ -76,11 +76,10 @@ Este repositório **é a fonte** do pacote que outros projetos instalam. Toda ed
 - Empacotar só a partir do repo: `PACKAGE_FROM_REPO=1 ./package-init-project.sh`
 - Varredura de capacidades: `bash dist/init-project/templates/init-project/_scan.sh capacidades`
 - Varredura do projeto: `bash dist/init-project/templates/init-project/_scan.sh projeto --no-cache`
-- Lint bash: `shellcheck -S warning install-init-project.sh dist/init-project/templates/init-project/_scan.sh dist/init-project/hooks/session-scan.sh`
+- Lint bash: `shellcheck -S warning install-init-project.sh package-init-project.sh release.sh dist/init-project/templates/init-project/_scan.sh dist/init-project/hooks/session-scan.sh`
 - Parse do PowerShell: `pwsh -NoProfile -Command '[System.Management.Automation.Language.Parser]::ParseFile("./install-init-project.ps1",[ref]$null,[ref]$e); $e'`
 - Teste ponta a ponta sem tocar `~/.cursor`: `CURSOR_CONFIG_DIR=/tmp/x PERSONAL_MD_NO_UPDATE_CHECK=1 ./install-init-project.sh ./dist/init-project` e `CURSOR_CONFIG_DIR=/tmp/y PERSONAL_MD_NO_UPDATE_CHECK=1 pwsh -NoProfile -NonInteractive -File ./install-init-project.ps1 ./dist/init-project`, depois `diff -r /tmp/x /tmp/y`
-- Paridade das listas `FILES` (mesmo passo do workflow): ver `.github/workflows/release.yml`, passo "Paridade das listas FILES"
-- Publicar release: editar `dist/init-project/VERSION` + `CHANGELOG.md`, `git commit`, `git tag vX.Y.Z && git push origin main vX.Y.Z`
+- Publicar release: commit em `main` com `dist/init-project/VERSION` e `CHANGELOG.md`, depois `./release.sh` (pede `s`; `--dry-run` valida sem publicar)
 - Build / Typecheck / Docker: não se aplica.
 
 ## Regras de negócio

@@ -117,6 +117,14 @@ flowchart TD
 
 O comando não pode assumir que o ambiente do usuário é igual ao seu. Detectar antes de citar.
 
+No Windows, chame só `scan.cmd`. Não invoque `_scan.sh`: o Windows não executa essa extensão e a chamada falha em toda sessão. O instalador Windows grava esse caminho no `hooks.json` quando o hook ainda aponta para `session-scan.sh`.
+
+```bat
+%USERPROFILE%\.cursor\templates\init-project\scan.cmd capacidades
+```
+
+No macOS e no Linux:
+
 ```bash
 bash ~/.cursor/templates/init-project/_scan.sh capacidades
 ```
@@ -183,6 +191,10 @@ Nenhuma destas leituras depende do resultado de outra: emitir todas em lote, com
 
 **Uma chamada, não quinze.** O script faz a varredura estrutural inteira — manifestos, locks, Docker, build, diretórios de código e teste, migrações, contratos de API, ambiente, governança, `docs/arquitetura.html`, Git e volume:
 
+No Windows: `%USERPROFILE%\.cursor\templates\init-project\scan.cmd projeto`
+
+No macOS e no Linux:
+
 ```bash
 bash ~/.cursor/templates/init-project/_scan.sh projeto
 ```
@@ -193,9 +205,13 @@ Somente leitura sobre o projeto. Não imprime conteúdo de `.env`, secret ou cre
 
 A saída é cacheada em `~/.cursor/.scan-cache/`, fora do repositório: o projeto continua intocado e não precisa de `.gitignore`. A entrada é invalidada quando muda o mtime de `.git/HEAD`, `.git/index`, da raiz, de `docs/`, de `.cursor/` ou do próprio `_scan.sh`, e expira em 6 h de qualquer forma.
 
-- O hook `sessionStart` do Cursor já roda `_scan.sh sessao` ao abrir a sessão, então esta chamada normalmente acerta o cache e volta instantânea.
+- O hook `sessionStart` já roda a varredura `sessao` ao abrir a sessão (`session-scan.sh` no macOS/Linux, `session-scan.cmd` no Windows), então esta chamada normalmente acerta o cache e volta instantânea.
 - O cache pode não enxergar um arquivo novo em subdiretório profundo ainda não adicionado ao Git. Quando a precisão importar, usar `--no-cache`.
 - Em `--check`, usar **sempre** `--no-cache`: auditoria não pode ler cache velho.
+
+No Windows: `%USERPROFILE%\.cursor\templates\init-project\scan.cmd projeto --no-cache`
+
+No macOS e no Linux:
 
 ```bash
 bash ~/.cursor/templates/init-project/_scan.sh projeto --no-cache

@@ -122,7 +122,9 @@ Nunca executar automaticamente. Oferecer como sugestão no resumo final, com o c
 
 O pacote instalado em `~/.cursor` tem versão em `~/.cursor/VERSION` (semver). Cada release publicada em <https://github.com/c3t4r4/Personal-MD-for-Cursor/releases> é a tag `v<versão>`, com o conteúdo de `dist/init-project/` anexado em `.tar.gz` e `.zip`.
 
-`_scan.sh capacidades` compara as duas na seção `[VERSAO]`:
+No Windows o comando é `scan.cmd`, na mesma pasta, e não `_scan.sh`. O instalador Windows também troca, em `hooks.json`, `session-scan.sh` por `session-scan.cmd`.
+
+`_scan.sh capacidades` (via `scan.cmd` no Windows) compara as duas na seção `[VERSAO]`:
 
 ```text
 [VERSAO]

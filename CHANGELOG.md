@@ -2,7 +2,7 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versionamento: [SemVer](https://semver.org/lang/pt-BR/).
 
-A versão do pacote vive em `dist/init-project/VERSION`; cada release no GitHub é a tag `v<versão>` com o conteúdo de `dist/init-project/` anexado em `.tar.gz` e `.zip`.
+A versão do pacote vive em `dist/init-project/VERSION`. A release no GitHub é a tag `v<versão>`, criada por `./release.sh` (não por push), com o conteúdo de `dist/init-project/` anexado em `.tar.gz` e `.zip`.
 
 ## [Unreleased]
 
@@ -15,6 +15,8 @@ A versão do pacote vive em `dist/init-project/VERSION`; cada release no GitHub 
 - Dois backends de memória (`claude-mem`, `ai-memory`); `README.md` como 12.º documento da sincronização; preferências de stack por ecossistema e seção Performance na regra global.
 - `_scan.sh capacidades` com `[MCP_CURSOR]`, `[PLUGINS_CLAUDE]`, `[MARKETPLACES]`, `[BINARIOS]` e `[VERSAO]`; `_scan.sh projeto` com `[QUALIDADE]`.
 - Arquivo `VERSION` no pacote e aviso de atualização (GitHub Releases) nos instaladores e no `/init-project`, sem atualização automática.
+- Publicação da release por `./release.sh`, só com confirmação no terminal. Push não publica.
+- No Windows, `scan.cmd` e `session-scan.cmd` são a entrada da varredura e do hook. O instalador não chama o `.sh` direto.
 - Governança do próprio repositório (`AGENTS.md`, `docs/*`).
 
 [Unreleased]: https://github.com/c3t4r4/Personal-MD-for-Cursor/compare/v1.0.0...HEAD

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # _scan.sh — detecção somente-leitura para /init-project
+# No Windows a entrada é scan.cmd (nesta pasta), que acha o Git Bash e
+# chama este arquivo. Não invocar _scan.sh direto no Windows.
 #
 # Uso:
 #   _scan.sh capacidades                 → o que existe no ambiente (agentes, skills, plugins)

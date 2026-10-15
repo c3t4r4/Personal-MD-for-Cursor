@@ -34,6 +34,7 @@ FILES=(
   "rules/personal-md-global.mdc"
   "commands/init-project.md"
   "templates/init-project/_scan.sh"
+  "templates/init-project/scan.cmd"
   "templates/init-project/_capacidades.md"
   "templates/init-project/_checklist-entrevista.md"
   "templates/init-project/_varredura-regras.md"
@@ -53,7 +54,9 @@ FILES=(
 
 OPTIONAL_FILES=(
   "hooks/session-scan.sh"
+  "hooks/session-scan.cmd"
   "hooks.json.snippet"
+  "hooks.json.windows.snippet"
 )
 
 if [[ "${PACKAGE_FROM_REPO:-0}" == "1" ]]; then
